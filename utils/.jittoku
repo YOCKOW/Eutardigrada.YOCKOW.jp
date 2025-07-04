@@ -1,0 +1,145 @@
+#!/usr/bin/env zsh
+
+################################################################################
+#
+# utils/.jittoku
+#
+# © 2025 YOCKOW.
+#     Licensed under MIT License.
+#     See "LICENSE.txt" for more information.
+#
+################################################################################
+
+set -eu
+
+# Constants
+################################################################################
+
+declare -r commandName=$(basename "$0")
+declare -r -a commandArguments=($@)
+declare -r utilsDir=$(cd $(dirname "$0") && pwd -P)
+declare -r repoRootDir=$(dirname "$utilsDir")
+declare -r composeDevYamlFile="${repoRootDir}/docker-compose.development.yml"
+
+# Internal Functions
+################################################################################
+
+function printError() {
+  local -r message="$1"
+  printf '\033[31merror:\033[m %s\n' "$message" 1>&2
+}
+
+function printWarning() {
+  local -r message="$1"
+  printf '\033[33mwarning:\033[m %s\n' "$message" 1>&2
+}
+
+function printInfo() {
+  local -r message="$1"
+  printf '\033[2minfo:\033[m %s\n' "$message" 1>&2
+}
+
+function fatalError() {
+  printError "$1"
+  exit 1
+}
+
+function assertionFailed() {
+  local -r message="$1"
+  local -r lineNumber="${2:-0}"
+  echo "❗ Assertion failed (bug): line ${lineNumber}: $message" 1>&2
+  exit 1
+}
+
+function isDarwin() {
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    function isDarwin() {
+      return 0
+    }
+    return 0
+  else
+    function isDarwin() {
+      return 1
+    }
+    return 1
+  fi
+}
+
+function isTrue() {
+  local -r value="$1"
+  if [[ "${(L)value}" == "true" ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# Commands
+################################################################################
+
+function get-gid() {
+  local -r groupName="${1:-}"
+  if [[ -z "$groupName" ]]; then
+    fatalError "No group name is given."
+  fi
+
+  local -r groupID=$({
+    if isDarwin; then
+      dscl . -list /Groups PrimaryGroupID | grep -E '^\s*'"$groupName" | xargs | cut -d ' ' -f 2
+    else
+      getent group "$groupName" | cut -d ':' -f 3
+    fi
+  })
+
+  if [[ -z "$groupID" ]]; then
+    return 1
+  fi
+  echo "$groupID"
+  return 0
+}
+
+function restart-development-server() {
+  set +e
+  stop-development-server
+  set -e
+  start-development-server
+}
+
+function start-development-server() {
+  __docker-compose --file "$composeDevYamlFile" up --detach
+}
+
+function stop-development-server() {
+  __docker-compose --file "$composeDevYamlFile" down
+}
+
+## Private Commands
+
+function __get-www-gid() {
+  get-gid swifche
+}
+
+function __docker-compose() {
+  local wwwGID; wwwGID=$(__get-www-gid)
+
+  set -x
+  sudo env HOST_ROOT_DIR="${repoRootDir}" WWW_GROUP_ID="${wwwGID}" TEST_PORT="${TEST_PORT:-60080}" \
+    docker compose $@
+  { set +x; } 2>/dev/null
+}
+
+
+# Execute
+################################################################################
+
+case "$commandName" in
+get-gid | \
+restart-development-server | \
+start-development-server |\
+stop-development-server)
+  $commandName $commandArguments
+;;
+*)
+  fatalError "Unexpected command name: '${commandName}'"
+;;
+esac

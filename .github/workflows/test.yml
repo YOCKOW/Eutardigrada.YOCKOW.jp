@@ -1,0 +1,28 @@
+name: Test Eutardigrada.YOCKOW.jp
+on:
+  push:
+    branches:
+      - "*"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Repository
+        uses: actions/checkout@v4
+      - name: Install dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt update
+          sudo apt install zsh
+      - name: Set up Docker Compose
+        uses: docker/setup-compose-action@v1
+      - name: Test
+        env:
+          TEST_PORT: "80"
+        run: |
+          set -eu
+          sudo groupadd swifche
+          sudo gpasswd --add $(whoami) swifche
+          ./utils/start-development-server
+          curl -v --retry 5 --retry-delay 2 --retry-all-errors localhost:$TEST_PORT
+          ./utils/stop-development-server
