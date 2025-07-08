@@ -5,7 +5,12 @@ services:
     environment:
       TZ: Asia/Tokyo
       WWW_GROUP_ID: ${WWW_GROUP_ID}
+      DEFAULT_SERVER_DOMAIN: Eutardigrada.YOCKOW.test
     volumes:
+      - type: bind
+        read_only: true
+        source: "${HOST_ROOT_DIR}/.certs"
+        target: "/certs"
       - type: bind
         source: ${HOST_ROOT_DIR}/Web/Config
         target: /home/swifche/Web/Config
@@ -19,6 +24,7 @@ services:
         source: ${HOST_ROOT_DIR}/Web/UnsecureDocumentRoot
         target: /home/swifche/Web/UnsecureDocumentRoot
     ports:
-      - "${TEST_PORT}:80"
+      - "${TEST_HTTP_PORT}:80"
+      - "${TEST_HTTPS_PORT}:443"
     command: >-
       httpd -f /home/swifche/Web/Config/httpd.conf
