@@ -1,0 +1,199 @@
+#!/usr/bin/env zsh
+
+################################################################################
+#
+# utils/.jittoku
+#
+# © 2025 YOCKOW.
+#     Licensed under MIT License.
+#     See "LICENSE.txt" for more information.
+#
+################################################################################
+
+set -eu
+
+# Constants
+################################################################################
+
+declare -r commandName=$(basename "$0")
+declare -r -a commandArguments=($@)
+declare -r utilsDir=$(cd $(dirname "$0") && pwd -P)
+declare -r repoRootDir=$(dirname "$utilsDir")
+declare -r composeDevYamlFile="${repoRootDir}/docker-compose.development.yml"
+
+## Certificates for development
+declare -r devCertsDir="${repoRootDir}/.certs"
+declare -r devCADir="${devCertsDir}/ca"
+declare -r devCAKeyFile="${devCADir}/dev-ca.key"
+declare -r devCACSRFile="${devCADir}/dev-ca.csr"
+declare -r devCACertFile="${devCADir}/dev-ca.crt"
+declare -r devCAExtFile="${devCADir}/ext.ctx"
+declare -r devServerCertsDir="${devCertsDir}/live/eutardigrada.yockow.jp"
+declare -r devServerKeyFile="${devServerCertsDir}/privkey.pem" # Compatible with letsenctypt
+declare -r devServerCSRFile="${devServerCertsDir}/server.csr"
+declare -r devServerExtFile="${devServerCertsDir}/ext.ctx"
+declare -r devServerCertFile="${devServerCertsDir}/fullchain.pem" # Compatible with letsenctypt
+
+# Internal Functions
+################################################################################
+
+function printError() {
+  local -r message="$1"
+  printf '\033[31merror:\033[m %s\n' "$message" 1>&2
+}
+
+function printWarning() {
+  local -r message="$1"
+  printf '\033[33mwarning:\033[m %s\n' "$message" 1>&2
+}
+
+function printInfo() {
+  local -r message="$1"
+  printf '\033[2minfo:\033[m %s\n' "$message" 1>&2
+}
+
+function fatalError() {
+  printError "$1"
+  exit 1
+}
+
+function assertionFailed() {
+  local -r message="$1"
+  local -r lineNumber="${2:-0}"
+  echo "❗ Assertion failed (bug): line ${lineNumber}: $message" 1>&2
+  exit 1
+}
+
+function isDarwin() {
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    function isDarwin() {
+      return 0
+    }
+    return 0
+  else
+    function isDarwin() {
+      return 1
+    }
+    return 1
+  fi
+}
+
+function isTrue() {
+  local -r value="$1"
+  if [[ "${(L)value}" == "true" ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# Commands
+################################################################################
+
+function generate-development-certificates() {
+  set -x
+
+  mkdir -p "$devCertsDir" "$devCADir" "$devServerCertsDir"
+
+  openssl genrsa -out "$devCAKeyFile" 2048
+  openssl req -batch -new \
+    -key "$devCAKeyFile" \
+    -out "$devCACSRFile" \
+    -subj '/C=jp/ST=Aichi/L=Owari/O=Eutardigrada/CN=Eutardigrada'
+  echo 'basicConstraints = CA:TRUE' >"$devCAExtFile"
+  openssl x509 -req -days 3650 \
+    -signkey "$devCAKeyFile" \
+    -in "$devCACSRFile" \
+    -extfile "$devCAExtFile" \
+    -out "$devCACertFile"
+  openssl req -text -noout -in "$devCACSRFile"
+  openssl x509 -text -noout -in "$devCACertFile"
+
+  openssl genrsa -out "$devServerKeyFile" 2048
+  openssl req -batch -new \
+    -key "$devServerKeyFile" \
+    -out "$devServerCSRFile" \
+    -subj '/C=jp/ST=Aichi/L=Owari/O=Eutardigrada/CN=eutardigrada.yockow.test'
+  echo 'subjectAltName = DNS:eutardigrada.yockow.test, DNS:eutardigrada.yockow.local, DNS:localhost, IP:127.0.0.1' >"$devServerExtFile"
+  openssl x509 -req -days 366 \
+    -CA "$devCACertFile" \
+    -CAkey "$devCAKeyFile" \
+    -CAcreateserial \
+    -in "$devServerCSRFile" \
+    -extfile "$devServerExtFile" \
+    -out "$devServerCertFile"
+  openssl req -text -noout -in "$devServerCSRFile"
+  openssl x509 -text -noout -in "$devServerCertFile"
+
+
+  { set +x; } 2>/dev/null
+}
+
+function get-gid() {
+  local -r groupName="${1:-}"
+  if [[ -z "$groupName" ]]; then
+    fatalError "No group name is given."
+  fi
+
+  local -r groupID=$({
+    if isDarwin; then
+      dscl . -list /Groups PrimaryGroupID | grep -E '^\s*'"$groupName" | xargs | cut -d ' ' -f 2
+    else
+      getent group "$groupName" | cut -d ':' -f 3
+    fi
+  })
+
+  if [[ -z "$groupID" ]]; then
+    return 1
+  fi
+  echo "$groupID"
+  return 0
+}
+
+function restart-development-server() {
+  set +e
+  stop-development-server
+  set -e
+  start-development-server
+}
+
+function start-development-server() {
+  __docker-compose --file "$composeDevYamlFile" up --detach
+}
+
+function stop-development-server() {
+  __docker-compose --file "$composeDevYamlFile" down
+}
+
+## Private Commands
+
+function __get-www-gid() {
+  get-gid swifche
+}
+
+function __docker-compose() {
+  local wwwGID; wwwGID=$(__get-www-gid)
+
+  set -x
+  sudo env HOST_ROOT_DIR="${repoRootDir}" WWW_GROUP_ID="${wwwGID}" \
+    TEST_HTTP_PORT="${TEST_HTTP_PORT:-60080}" TEST_HTTPS_PORT="${TEST_HTTPS_PORT:-60443}" \
+    docker compose $@
+  { set +x; } 2>/dev/null
+}
+
+
+# Execute
+################################################################################
+
+case "$commandName" in
+generate-development-certificates | \
+get-gid | \
+restart-development-server | \
+start-development-server |\
+stop-development-server)
+  $commandName $commandArguments
+;;
+*)
+  fatalError "Unexpected command name: '${commandName}'"
+;;
+esac

@@ -1,0 +1,30 @@
+services:
+  swifche-test:
+    container_name: swifche-test
+    build: .
+    environment:
+      TZ: Asia/Tokyo
+      WWW_GROUP_ID: ${WWW_GROUP_ID}
+      DEFAULT_SERVER_DOMAIN: Eutardigrada.YOCKOW.test
+    volumes:
+      - type: bind
+        read_only: true
+        source: "${HOST_ROOT_DIR}/.certs"
+        target: "/certs"
+      - type: bind
+        source: ${HOST_ROOT_DIR}/Web/Config
+        target: /home/swifche/Web/Config
+      - type: bind
+        source: ${HOST_ROOT_DIR}/Web/DocumentRoot
+        target: /home/swifche/Web/DocumentRoot
+      - type: bind
+        source: ${HOST_ROOT_DIR}/Web/Logs
+        target: /home/swifche/Web/Logs
+      - type: bind
+        source: ${HOST_ROOT_DIR}/Web/UnsecureDocumentRoot
+        target: /home/swifche/Web/UnsecureDocumentRoot
+    ports:
+      - "${TEST_HTTP_PORT}:80"
+      - "${TEST_HTTPS_PORT}:443"
+    command: >-
+      httpd -f /home/swifche/Web/Config/httpd.conf
