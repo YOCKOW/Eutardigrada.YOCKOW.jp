@@ -22,7 +22,7 @@ jobs:
           TEST_HTTPS_PORT: "443"
           TEST_SERVER_DOMAIN: eutardigrada.yockow.test
         run: |
-          set -eu
+          set -eux
           {
             sudo groupadd swifche
             sudo gpasswd --add $(whoami) swifche
@@ -30,5 +30,6 @@ jobs:
             ./utils/start-development-server
             curl -v --retry 5 --retry-delay 2 --retry-all-errors localhost:$TEST_HTTP_PORT
             curl -v --fail-with-body --http2 --cacert .certs/ca/dev-ca.crt --resolve ${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}:127.0.0.1 https://${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}
+            curl --silent --fail-with-body --cacert .certs/ca/dev-ca.crt --resolve ${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}:127.0.0.1 https://${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}/single-swift-file.cgi
             ./utils/stop-development-server
           } 2>&1
