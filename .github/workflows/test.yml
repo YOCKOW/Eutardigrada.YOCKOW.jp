@@ -6,6 +6,11 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      TEST_HTTP_PORT: "80"
+      TEST_HTTPS_PORT: "443"
+      TEST_SERVER_DOMAIN: eutardigrada.yockow.test
+      TEST_CA_CERT: .certs/ca/dev-ca.crt
     steps:
       - name: Check out Repository
         uses: actions/checkout@v4
@@ -16,19 +21,21 @@ jobs:
           sudo apt install zsh
       - name: Set up Docker Compose
         uses: docker/setup-compose-action@v1
-      - name: Test
-        env:
-          TEST_HTTP_PORT: "80"
-          TEST_HTTPS_PORT: "443"
-          TEST_SERVER_DOMAIN: eutardigrada.yockow.test
+      - name: Create 'swifche' group
         run: |
-          set -eu
-          {
-            sudo groupadd swifche
-            sudo gpasswd --add $(whoami) swifche
-            ./utils/generate-development-certificates
-            ./utils/start-development-server
-            curl -v --retry 5 --retry-delay 2 --retry-all-errors localhost:$TEST_HTTP_PORT
-            curl -v --fail-with-body --http2 --cacert .certs/ca/dev-ca.crt --resolve ${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}:127.0.0.1 https://${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}
-            ./utils/stop-development-server
-          } 2>&1
+          sudo groupadd swifche
+          sudo gpasswd --add $(whoami) swifche
+      - name: Generate Certificates for development
+        run: ./utils/generate-development-certificates
+      - name: Start Development Server (Build Development Image)
+        run: ./utils/start-development-server
+      - name: Test HTTP
+        run: curl -v --retry 5 --retry-delay 2 --retry-all-errors localhost:$TEST_HTTP_PORT
+      - name: Test HTTPS
+        run: curl -v --fail-with-body --http2 --cacert "${TEST_CA_CERT}" --resolve ${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}:127.0.0.1 https://${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}
+      - name: Test Single Swift File CGI
+        run: curl --silent --fail-with-body --cacert "${TEST_CA_CERT}" --resolve ${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}:127.0.0.1 https://${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}/single-swift-file.cgi
+      - name: Test Swift Package CGI
+        run: curl --silent --fail-with-body --cacert "${TEST_CA_CERT}" --resolve ${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}:127.0.0.1 https://${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}/swift-package.cgi
+      - name: Stop Development Server
+        run: ./utils/stop-development-server
