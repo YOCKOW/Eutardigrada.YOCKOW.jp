@@ -14,7 +14,7 @@ ARG SWIFT_DE_CGI_IMAGE="ghcr.io/yockow/swift-de-cgi:Swift_6.1.2-noble-release-20
 ARG CGI_DERIVATIVES_DIR="/home/swifche/Web/CGI"
 
 ################################################################################
-FROM ${SWIFT_COMPILER_IMAGE} as swift-cgi-builder
+FROM ${SWIFT_COMPILER_IMAGE} AS swift-cgi-builder
 
 ARG CGI_DERIVATIVES_DIR="/home/swifche/Web/CGI"
 
@@ -23,6 +23,14 @@ COPY ./CGISources /CGISources
 
 # Compile the single Swift file
 RUN swiftc -O /CGISources/SingleSwiftFile/main.swift -o "${CGI_DERIVATIVES_DIR}/single-swift-file.cgi"
+
+# Compile Swift Package
+WORKDIR /CGISources/SwiftCGIPackage
+RUN mkdir -p "${CGI_DERIVATIVES_DIR}/SwiftCGIPackage" \
+    && swift build --configuration debug \
+    && swift test --configuration debug \
+    && swift build --configuration release \
+    && cp -R "$(cd .build/release/ && pwd -P)" "${CGI_DERIVATIVES_DIR}/SwiftCGIPackage/"
 
 
 ################################################################################

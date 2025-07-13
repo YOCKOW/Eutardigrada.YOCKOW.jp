@@ -35,5 +35,7 @@ jobs:
         run: curl -v --fail-with-body --http2 --cacert "${TEST_CA_CERT}" --resolve ${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}:127.0.0.1 https://${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}
       - name: Test Single Swift File CGI
         run: curl --silent --fail-with-body --cacert "${TEST_CA_CERT}" --resolve ${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}:127.0.0.1 https://${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}/single-swift-file.cgi
+      - name: Test Swift Package CGI
+        run: curl --silent --fail-with-body --cacert "${TEST_CA_CERT}" --resolve ${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}:127.0.0.1 https://${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}/swift-package.cgi
       - name: Stop Development Server
         run: ./utils/stop-development-server
