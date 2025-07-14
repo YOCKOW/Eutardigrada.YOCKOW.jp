@@ -3,6 +3,11 @@ on:
   push:
     branches:
       - "*"
+    paths:
+      - ".github/workflows/*.yml"
+      - "CGISources/**"
+      - "docker-compose.*.yml"
+      - "**/Dockerfile"
 jobs:
   test:
     runs-on: ubuntu-latest
