@@ -19,8 +19,13 @@ declare -r commandName=$(basename "$0")
 declare -r -a commandArguments=($@)
 declare -r utilsDir=$(cd $(dirname "$0") && pwd -P)
 declare -r repoRootDir=$(dirname "$utilsDir")
+
+## Docker Compose
+declare -r composeBaseYamlFile="${repoRootDir}/docker-compose.base.yml"
 declare -r composeDevYamlFile="${repoRootDir}/docker-compose.development.yml"
 declare -r composeProdYamlFile="${repoRootDir}/docker-compose.production.yml"
+declare -r devContainerName="eutardigrada-test"
+declare -r prodContainerName="eutardigrada"
 
 ## Certificates for development
 declare -r devCertsDir="${repoRootDir}/.certs"
@@ -90,6 +95,21 @@ function isTrue() {
 
 # Commands
 ################################################################################
+
+function docker-compose-config() {
+  local -r composeMode="${1:-}"
+  case "${(L)composeMode}" in
+  prod | production)
+    __docker-compose --file "$composeBaseYamlFile" --file "$composeProdYamlFile" config
+  ;;
+  dev | development)
+    __docker-compose --file "$composeBaseYamlFile" --file "$composeDevYamlFile" config
+  ;;
+  *)
+    fatalError "Need to specify the mode to view the compose config: 'prod' or 'dev'."
+  ;;
+  esac
+}
 
 function generate-development-certificates() {
   set -x
@@ -166,19 +186,19 @@ function restart-production-server() {
 }
 
 function start-development-server() {
-  __docker-compose --file "$composeDevYamlFile" up --detach
+  __docker-compose --file "$composeBaseYamlFile" --file "$composeDevYamlFile" up --detach
 }
 
 function start-production-server() {
-  __docker-compose --file "$composeProdYamlFile" up --detach
+  __docker-compose --file "$composeBaseYamlFile" --file "$composeProdYamlFile" up --detach
 }
 
 function stop-development-server() {
-  __docker-compose --file "$composeDevYamlFile" down
+  __docker-compose --file "$composeBaseYamlFile" --file "$composeDevYamlFile" down
 }
 
 function stop-production-server() {
-  __docker-compose --file "$composeProdYamlFile" down
+  __docker-compose --file "$composeBaseYamlFile" --file "$composeProdYamlFile" down
 }
 
 ## Private Commands
@@ -191,8 +211,10 @@ function __docker-compose() {
   local wwwGID; wwwGID=$(__get-www-gid)
 
   set -x
-  sudo env HOST_ROOT_DIR="${repoRootDir}" WWW_GROUP_ID="${wwwGID}" \
-    TEST_HTTP_PORT="${TEST_HTTP_PORT:-60080}" TEST_HTTPS_PORT="${TEST_HTTPS_PORT:-60443}" \
+  sudo env \
+    DEV_CONTAINER_NAME="${devContainerName}" PROD_CONTAINER_NAME="${prodContainerName}" \
+    HOST_ROOT_DIR="${repoRootDir}" WWW_GROUP_ID="${wwwGID}" \
+    DEV_HTTP_PORT="${TEST_HTTP_PORT:-60080}" DEV_HTTPS_PORT="${TEST_HTTPS_PORT:-60443}" \
     PROD_HTTP_PORT="${PROD_HTTP_PORT:-80}" PROD_HTTPS_PORT="${PROD_HTTPS_PORT:-443}" \
     docker compose $@
   { set +x; } 2>/dev/null
@@ -203,6 +225,7 @@ function __docker-compose() {
 ################################################################################
 
 case "$commandName" in
+docker-compose-config | \
 generate-development-certificates | \
 get-gid | \
 restart-development-server | \
