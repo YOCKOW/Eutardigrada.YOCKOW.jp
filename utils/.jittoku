@@ -20,6 +20,7 @@ declare -r -a commandArguments=($@)
 declare -r utilsDir=$(cd $(dirname "$0") && pwd -P)
 declare -r repoRootDir=$(dirname "$utilsDir")
 declare -r composeDevYamlFile="${repoRootDir}/docker-compose.development.yml"
+declare -r composeProdYamlFile="${repoRootDir}/docker-compose.production.yml"
 
 ## Certificates for development
 declare -r devCertsDir="${repoRootDir}/.certs"
@@ -157,12 +158,27 @@ function restart-development-server() {
   start-development-server
 }
 
+function restart-production-server() {
+  set +e
+  stop-production-server
+  set -e
+  start-production-server
+}
+
 function start-development-server() {
   __docker-compose --file "$composeDevYamlFile" up --detach
 }
 
+function start-production-server() {
+  __docker-compose --file "$composeProdYamlFile" up --detach
+}
+
 function stop-development-server() {
   __docker-compose --file "$composeDevYamlFile" down
+}
+
+function stop-production-server() {
+  __docker-compose --file "$composeProdYamlFile" down
 }
 
 ## Private Commands
@@ -177,6 +193,7 @@ function __docker-compose() {
   set -x
   sudo env HOST_ROOT_DIR="${repoRootDir}" WWW_GROUP_ID="${wwwGID}" \
     TEST_HTTP_PORT="${TEST_HTTP_PORT:-60080}" TEST_HTTPS_PORT="${TEST_HTTPS_PORT:-60443}" \
+    PROD_HTTP_PORT="${PROD_HTTP_PORT:-80}" PROD_HTTPS_PORT="${PROD_HTTPS_PORT:-443}" \
     docker compose $@
   { set +x; } 2>/dev/null
 }
@@ -189,8 +206,11 @@ case "$commandName" in
 generate-development-certificates | \
 get-gid | \
 restart-development-server | \
+restart-production-server | \
 start-development-server |\
-stop-development-server)
+start-production-server |\
+stop-development-server |\
+stop-production-server)
   $commandName $commandArguments
 ;;
 *)
