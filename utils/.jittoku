@@ -171,6 +171,10 @@ function get-gid() {
   return 0
 }
 
+function pull-production-image() {
+  __docker-compose --file "$composeBaseYamlFile" --file "$composeProdYamlFile" pull
+}
+
 function restart-development-server() {
   set +e
   stop-development-server
@@ -179,10 +183,22 @@ function restart-development-server() {
 }
 
 function restart-production-server() {
+  local -A parsedArguments
+  zparseopts -D -E -M -A parsedArguments -- -pull
+  local shouldPull="false"
+  if [[ -n "${parsedArguments[(i)--pull]}" ]]; then
+    shouldPull="true"
+  fi
+
   set +e
   stop-production-server
+
   set -e
-  start-production-server
+  if isTrue $shouldPull; then
+    start-production-server --pull
+  else
+    start-production-server
+  fi
 }
 
 function start-development-server() {
@@ -190,6 +206,11 @@ function start-development-server() {
 }
 
 function start-production-server() {
+  local -A parsedArguments
+  zparseopts -D -E -M -A parsedArguments -- -pull
+  if [[ -n "${parsedArguments[(i)--pull]}" ]]; then
+    pull-production-image
+  fi
   __docker-compose --file "$composeBaseYamlFile" --file "$composeProdYamlFile" up --detach
 }
 
@@ -228,6 +249,7 @@ case "$commandName" in
 docker-compose-config | \
 generate-development-certificates | \
 get-gid | \
+pull-production-image | \
 restart-development-server | \
 restart-production-server | \
 start-development-server |\
