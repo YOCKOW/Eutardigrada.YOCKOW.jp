@@ -188,7 +188,8 @@ function install-systemd-files() {
 
     local modifiedContent=$(
       cat "$systemdFilePath" | \
-      sed -E "s|%%repo_root%%|$repoRootDir|"
+      sed -E "s|%%repo_root_dir%%|$repoRootDir|" | \
+      sed -E "s|%%utils_dir%%|$utilsDir|"
     )
 
     buffer="${buffer}\n\n${modifiedContent}"
