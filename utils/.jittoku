@@ -19,6 +19,8 @@ declare -r commandName=$(basename "$0")
 declare -r -a commandArguments=($@)
 declare -r utilsDir=$(cd $(dirname "$0") && pwd -P)
 declare -r repoRootDir=$(dirname "$utilsDir")
+declare -r assetsDir="${repoRootDir}/assets"
+declare -r systemdDir="${assetsDir}/systemd"
 
 ## Docker Compose
 declare -r composeBaseYamlFile="${repoRootDir}/docker-compose.base.yml"
@@ -171,6 +173,37 @@ function get-gid() {
   return 0
 }
 
+function install-systemd-files() {
+  if isDarwin; then
+    printWarning "'$0' runs with debug mode on Darwin."
+  fi
+  
+  local systemdFilePath
+  for systemdFilePath in "${systemdDir}/"*.{timer,service}.template(N); do {
+    local filename=$(basename "$systemdFilePath")
+    local targetPath="/etc/systemd/system/${filename%.template}"
+    local buffer=""
+    
+    buffer="# Generated from $systemdFilePath"
+
+    local modifiedContent=$(
+      cat "$systemdFilePath" | \
+      sed -E "s|%%repo_root_dir%%|$repoRootDir|" | \
+      sed -E "s|%%utils_dir%%|$utilsDir|"
+    )
+
+    buffer="${buffer}\n\n${modifiedContent}"
+
+    echo "'$systemdFilePath'" '->' "'$targetPath'"
+    if isDarwin; then
+      echo "$buffer" | cat -n
+      echo
+    else
+      echo "$buffer" | sudo tee "${targetPath}" 1>/dev/null
+    fi
+  }; done
+}
+
 function pull-production-image() {
   __docker-compose --file "$composeBaseYamlFile" --file "$composeProdYamlFile" pull
 }
@@ -249,6 +282,7 @@ case "$commandName" in
 docker-compose-config | \
 generate-development-certificates | \
 get-gid | \
+install-systemd-files | \
 pull-production-image | \
 restart-development-server | \
 restart-production-server | \
