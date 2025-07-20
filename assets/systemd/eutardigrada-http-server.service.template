@@ -1,0 +1,16 @@
+[Unit]
+Description=Eutardigrada HTTP Server
+Documentation=https://GitHub.com/YOCKOW/Eutardigrada.YOCKOW.jp
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=%%repo_root%%
+ExecStart=%%repo_root%%/start-production-server
+ExecReload=%%repo_root%%/utils/restart-production-server
+ExecStop=%%repo_root%%/utils/stop-production-server
+
+[Install]
+WantedBy=default.target
