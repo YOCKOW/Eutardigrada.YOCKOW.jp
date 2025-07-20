@@ -1,31 +1,18 @@
+# This compose file overrides 'docker-compose.base.yml'.
 services:
-  swifche-prod:
-    container_name: eutardigrada
+  eutardigrada-server:
+    container_name: ${PROD_CONTAINER_NAME}
     image: ghcr.io/yockow/eutardigrada.yockow.jp:latest
     restart: unless-stopped
     environment:
-      TZ: Asia/Tokyo
-      WWW_GROUP_ID: ${WWW_GROUP_ID}
       DEFAULT_SERVER_DOMAIN: Eutardigrada.YOCKOW.jp
-      PROD_HTTP_PORT: ${PROD_HTTP_PORT}
-      PROD_HTTPS_PORT: ${PROD_HTTPS_PORT}
+      HOST_HTTP_PORT: ${PROD_HTTP_PORT}
+      HOST_HTTPS_PORT: ${PROD_HTTPS_PORT}
     volumes:
       - type: bind
         read_only: true
         source: /etc/letsencrypt
         target: /certs
-      - type: bind
-        source: ${HOST_ROOT_DIR}/Web/Config
-        target: /home/swifche/Web/Config
-      - type: bind
-        source: ${HOST_ROOT_DIR}/Web/DocumentRoot
-        target: /home/swifche/Web/DocumentRoot
-      - type: bind
-        source: ${HOST_ROOT_DIR}/Web/Logs
-        target: /home/swifche/Web/Logs
-      - type: bind
-        source: ${HOST_ROOT_DIR}/Web/UnsecureDocumentRoot
-        target: /home/swifche/Web/UnsecureDocumentRoot
     ports:
       - "${PROD_HTTP_PORT}:80"
       - "${PROD_HTTPS_PORT}:443"
