@@ -21,6 +21,8 @@ declare -r utilsDir=$(cd $(dirname "$0") && pwd -P)
 declare -r repoRootDir=$(dirname "$utilsDir")
 declare -r assetsDir="${repoRootDir}/assets"
 declare -r systemdDir="${assetsDir}/systemd"
+declare -r certbotDir="${assetsDir}/letsencrypt"
+declare -r webRootDir="${repoRootDir}/Web"
 
 ## Docker Compose
 declare -r composeBaseYamlFile="${repoRootDir}/docker-compose.base.yml"
@@ -173,6 +175,22 @@ function get-gid() {
   return 0
 }
 
+function install-certbot-config-files() {
+  if isDarwin; then
+    printWarning "'$0' runs with debug mode on Darwin."
+  fi
+
+  local certbotConfFilePath
+  for certbotConfFilePath in "${certbotDir}/"*/*.conf.template(N); do {
+    local -r filename=$(basename "$certbotConfFilePath")
+    local -r targetPath="/etc/letsencrypt/$(basename $(dirname "$certbotConfFilePath"))/${filename%.template}"
+
+    __install-file \
+      --pre "# Generated from $certbotConfFilePath" \
+      "$certbotConfFilePath" "$targetPath"
+  }; done
+}
+
 function install-systemd-files() {
   if isDarwin; then
     printWarning "'$0' runs with debug mode on Darwin."
@@ -180,27 +198,12 @@ function install-systemd-files() {
   
   local systemdFilePath
   for systemdFilePath in "${systemdDir}/"*.{timer,service}.template(N); do {
-    local filename=$(basename "$systemdFilePath")
-    local targetPath="/etc/systemd/system/${filename%.template}"
-    local buffer=""
-    
-    buffer="# Generated from $systemdFilePath"
+    local -r filename=$(basename "$systemdFilePath")
+    local -r targetPath="/etc/systemd/system/${filename%.template}"
 
-    local modifiedContent=$(
-      cat "$systemdFilePath" | \
-      sed -E "s|%%repo_root_dir%%|$repoRootDir|" | \
-      sed -E "s|%%utils_dir%%|$utilsDir|"
-    )
-
-    buffer="${buffer}\n\n${modifiedContent}"
-
-    echo "'$systemdFilePath'" '->' "'$targetPath'"
-    if isDarwin; then
-      echo "$buffer" | cat -n
-      echo
-    else
-      echo "$buffer" | sudo tee "${targetPath}" 1>/dev/null
-    fi
+    __install-file \
+      --pre "# Generated from $systemdFilePath" \
+      "$systemdFilePath" "$targetPath"
   }; done
 }
 
@@ -257,10 +260,6 @@ function stop-production-server() {
 
 ## Private Commands
 
-function __get-www-gid() {
-  get-gid swifche
-}
-
 function __docker-compose() {
   local wwwGID; wwwGID=$(__get-www-gid)
 
@@ -274,6 +273,63 @@ function __docker-compose() {
   { set +x; } 2>/dev/null
 }
 
+function __get-www-gid() {
+  get-gid swifche
+}
+
+function __install-file() {
+  local -A parsedArguments
+  zparseopts -D -E -M -A parsedArguments -- \
+    -pre: -preamble:=-pre -post: -postscript:=-post
+
+  local preamble=""
+  if [[ -n "${parsedArguments[(i)--pre]}" ]]; then
+    preamble="${parsedArguments[--pre]}"
+  fi
+
+  local postscript=""
+  if [[ -n "${parsedArguments[(i)--post]}" ]]; then
+    postscript="${parsedArguments[--post]}"
+  fi
+  
+  [[ $#@ -eq 2 ]] || assertionFailed "'$0' requires at least 2 arguments: Source file path and destination file path."
+  local -r sourceFilePath="$1"
+  local -r destFilePath="$2"
+
+  if [[ ! -f "$sourceFilePath" ]]; then
+    assertionFailed "File doesn't exist at $sourceFilePath"
+  fi
+  echo "Installing '$sourceFilePath'" '->' "'$destFilePath'..." >&2
+
+  local theContent=""
+  if [[ -n "$preamble" ]]; then
+    theContent="${preamble}\n\n"
+  fi
+  theContent="${theContent}$(__modify-content "$sourceFilePath")"
+  if [[ -n "$postscript" ]]; then
+    theContent="${theContent}\n\n${postscript}"
+  fi
+
+  if isDarwin; then
+    echo "$theContent" | cat -n
+    echo
+  else
+    echo "$theContent" | sudo tee "$destFilePath" 1>/dev/null
+  fi
+}
+
+function __modify-content() {
+  local -r filePath="${1:-}"
+  if [[ -z "$filePath" ]] || [[ ! -f "$filePath" ]]; then
+    assertionFailed "File doesn't exist at ${filePath}?!"
+  fi
+
+  cat "$filePath" | \
+    sed -E "s|%%repo_root_dir%%|${repoRootDir}|" | \
+    sed -E "s|%%utils_dir%%|${utilsDir}|" | \
+    sed -E "s|%%web_root_dir%%|${webRootDir}|"
+}
+
 
 # Execute
 ################################################################################
@@ -282,6 +338,7 @@ case "$commandName" in
 docker-compose-config | \
 generate-development-certificates | \
 get-gid | \
+install-certbot-config-files | \
 install-systemd-files | \
 pull-production-image | \
 restart-development-server | \
