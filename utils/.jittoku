@@ -30,6 +30,9 @@ declare -r composeDevYamlFile="${repoRootDir}/docker-compose.development.yml"
 declare -r composeProdYamlFile="${repoRootDir}/docker-compose.production.yml"
 declare -r devContainerName="eutardigrada-test"
 declare -r prodContainerName="eutardigrada"
+declare -r prodNetworkIPRange="172.20.90.0/24"
+declare -r prodHTTPServerIPv4Address="172.20.90.64"
+declare -r prodHTTPServerLoopbackAddress="127.0.90.64"
 
 ## Certificates for development
 declare -r devCertsDir="${repoRootDir}/.certs"
@@ -260,17 +263,42 @@ function stop-production-server() {
 
 ## Private Commands
 
-function __docker-compose() {
+function __env() {
   local wwwGID; wwwGID=$(__get-www-gid)
 
-  set -x
-  sudo env \
-    DEV_CONTAINER_NAME="${devContainerName}" PROD_CONTAINER_NAME="${prodContainerName}" \
-    HOST_ROOT_DIR="${repoRootDir}" WWW_GROUP_ID="${wwwGID}" \
-    DEV_HTTP_PORT="${TEST_HTTP_PORT:-60080}" DEV_HTTPS_PORT="${TEST_HTTPS_PORT:-60443}" \
-    PROD_HTTP_PORT="${PROD_HTTP_PORT:-80}" PROD_HTTPS_PORT="${PROD_HTTPS_PORT:-443}" \
-    docker compose $@
-  { set +x; } 2>/dev/null
+  local execSudo="false"
+  if [[ $#@ -gt 0 ]] && [[ "$1" == "sudo" ]]; then
+    execSudo="true"
+    shift
+  fi
+
+  local -a envStringArray=(
+    DEV_CONTAINER_NAME="${devContainerName}"
+    PROD_CONTAINER_NAME="${prodContainerName}"
+    HOST_ROOT_DIR="${repoRootDir}"
+    WWW_GROUP_ID="${wwwGID}"
+    DEV_HTTP_PORT="${TEST_HTTP_PORT:-60080}" 
+    DEV_HTTPS_PORT="${TEST_HTTPS_PORT:-60443}"
+    PROD_NETWORK_IP_RANGE="${prodNetworkIPRange}"
+    PROD_HTTP_SERVER_IPV4_ADDRESS="${prodHTTPServerIPv4Address}"
+    PROD_HTTP_SERVER_LOOPBACK_ADDRESS="${PROD_LOOPBACK_ADDRESS:-${prodHTTPServerLoopbackAddress}}"
+    PROD_HTTP_PORT="${PROD_HTTP_PORT:-80}"
+    PROD_HTTPS_PORT="${PROD_HTTPS_PORT:-443}"
+  )
+
+  if isTrue $execSudo; then
+    set -x 
+    sudo env $envStringArray $@
+    { set +x; } 2>/dev/null
+  else
+    set -x 
+    env $envStringArray $@
+    { set +x; } 2>/dev/null
+  fi
+}
+
+function __docker-compose() {
+  __env sudo docker compose $@
 }
 
 function __get-www-gid() {
