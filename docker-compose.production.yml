@@ -3,7 +3,7 @@ networks:
   eutardigrada-network:
     ipam:
       config:
-        - subnet: "172.20.90.0/24"
+        - subnet: "${PROD_NETWORK_IP_RANGE}"
 services:
   eutardigrada-server:
     container_name: ${PROD_CONTAINER_NAME}
@@ -20,9 +20,9 @@ services:
         target: /certs
     networks:
       eutardigrada-network:
-        ipv4_address: "172.20.90.64"
+        ipv4_address: "${PROD_HTTP_SERVER_IPV4_ADDRESS}"
     ports:
-      - "127.0.90.64:${PROD_HTTP_PORT}:80"
-      - "127.0.90.64:${PROD_HTTPS_PORT}:443"
+      - "${PROD_HTTP_SERVER_LOOPBACK_ADDRESS}:${PROD_HTTP_PORT}:80"
+      - "${PROD_HTTP_SERVER_LOOPBACK_ADDRESS}:${PROD_HTTPS_PORT}:443"
     command: >-
       httpd -f /home/swifche/Web/Config/httpd.conf
