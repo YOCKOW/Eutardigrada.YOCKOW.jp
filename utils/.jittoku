@@ -33,6 +33,8 @@ declare -r prodContainerName="eutardigrada"
 declare -r prodNetworkIPRange="172.20.90.0/24"
 declare -r prodHTTPServerIPv4Address="172.20.90.64"
 declare -r prodHTTPServerLoopbackAddress="127.0.90.64"
+declare -r prodBlackholeIPAddress="172.20.90.96"
+declare -r prodBlackholePort="9696"
 
 ## Certificates for development
 declare -r devCertsDir="${repoRootDir}/.certs"
@@ -102,6 +104,10 @@ function isTrue() {
 
 # Commands
 ################################################################################
+
+function ban-ip() {
+  __ban-or-unban-ip ban $@
+}
 
 function docker-compose-config() {
   local -r composeMode="${1:-}"
@@ -261,7 +267,81 @@ function stop-production-server() {
   __docker-compose --file "$composeBaseYamlFile" --file "$composeProdYamlFile" down
 }
 
+function unban-ip() {
+  __ban-or-unban-ip unban $@
+}
+
+
 ## Private Commands
+
+function __ban-or-unban-ip() {
+  local doBan="false"
+  if [[ "${1:-}" == "ban" ]]; then
+    doBan="true"
+  fi
+  shift
+
+  local -A parsedArguments
+  zparseopts -D -E -M -A parsedArguments -- \
+    -families: -ports: -protocols: -timeout:
+
+  if [[ $#@ -ne 1 ]]; then
+    fatalError "Just one IP address is required."
+  fi
+
+  local -r ipAddress="$1"
+
+  local banFamilies="ipv4,ipv6"
+  if [[ -n "${parsedArguments[(i)--families]}" ]]; then
+    banFamilies="${parsedArguments[--families]##=}"
+  fi
+  local -r -a banFamiliesArray=($(echo ${(s:,:)banFamilies} | xargs))
+
+  local banPorts="1-65535"
+  if [[ -n "${parsedArguments[(i)--ports]}" ]]; then
+    banPorts="${parsedArguments[--ports]##=}"
+  fi
+  local -r -a banPortsArray=($(echo ${(s:,:)banPorts} | xargs))
+
+  local banProtocols="tcp"
+  if [[ -n "${parsedArguments[(i)--protocols]}" ]]; then
+    banProtocols="${parsedArguments[--protocols]##=}"
+  fi
+  local -r banProtocolsArray=($(echo ${(s:,:)banProtocols} | xargs))
+
+  local banTime=""
+  if [[ -n "${parsedArguments[(i)--timeout]}" ]]; then
+    banTime="${parsedArguments[--timeout]##=}"
+  fi
+
+  
+  local aFamily
+  local aPort
+  local aProtocol
+  local aRule
+  for aFamily in $banFamiliesArray; do
+    for aPort in $banPortsArray; do
+      for aProtocol in $banProtocolsArray; do
+        aRule="rule family=\"$aFamily\" source address=\"$ipAddress\" forward-port port=\"$aPort\" protocol=\"$aProtocol\" to-port=\"$prodBlackholePort\" to-addr=\"$prodBlackholeIPAddress\""
+        if isTrue $doBan; then
+          if [[ -z "$banTime" ]]; then
+            set -x
+            sudo firewall-cmd --add-rich-rule "$aRule"
+            { set +x; } 2>/dev/null
+          else
+            set -x
+            sudo firewall-cmd --add-rich-rule "$aRule" --timeout "$banTime"
+            { set +x; } 2>/dev/null
+          fi
+        else
+          set -x
+          sudo firewall-cmd --remove-rich-rule "$aRule"
+          { set +x; } 2>/dev/null
+        fi
+      done
+    done
+  done
+}
 
 function __env() {
   local wwwGID; wwwGID=$(__get-www-gid)
@@ -363,6 +443,7 @@ function __modify-content() {
 ################################################################################
 
 case "$commandName" in
+ban-ip | \
 docker-compose-config | \
 generate-development-certificates | \
 get-gid | \
@@ -374,7 +455,8 @@ restart-production-server | \
 start-development-server |\
 start-production-server |\
 stop-development-server |\
-stop-production-server)
+stop-production-server | \
+unban-ip )
   $commandName $commandArguments
 ;;
 *)
