@@ -283,7 +283,7 @@ function __ban-or-unban-ip() {
 
   local -A parsedArguments
   zparseopts -D -E -M -A parsedArguments -- \
-    -families: -ports: -protocols: -timeout:
+    -ports: -protocols: -timeout:
 
   if [[ $#@ -ne 1 ]]; then
     fatalError "Just one IP address is required."
@@ -291,11 +291,10 @@ function __ban-or-unban-ip() {
 
   local -r ipAddress="$1"
 
-  local banFamilies="ipv4,ipv6"
-  if [[ -n "${parsedArguments[(i)--families]}" ]]; then
-    banFamilies="${parsedArguments[--families]##=}"
+  local aFamily="ipv6"
+  if [[ "$ipAddress" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(/[0-9]+)?$ ]]; then
+    aFamily="ipv4"
   fi
-  local -r -a banFamiliesArray=($(echo ${(s:,:)banFamilies} | xargs))
 
   local banPorts="1-65535"
   if [[ -n "${parsedArguments[(i)--ports]}" ]]; then
@@ -313,32 +312,28 @@ function __ban-or-unban-ip() {
   if [[ -n "${parsedArguments[(i)--timeout]}" ]]; then
     banTime="${parsedArguments[--timeout]##=}"
   fi
-
   
-  local aFamily
   local aPort
   local aProtocol
   local aRule
-  for aFamily in $banFamiliesArray; do
-    for aPort in $banPortsArray; do
-      for aProtocol in $banProtocolsArray; do
-        aRule="rule family=\"$aFamily\" source address=\"$ipAddress\" forward-port port=\"$aPort\" protocol=\"$aProtocol\" to-port=\"$prodBlackholePort\" to-addr=\"$prodBlackholeIPAddress\""
-        if isTrue $doBan; then
-          if [[ -z "$banTime" ]]; then
-            set -x
-            sudo firewall-cmd --add-rich-rule "$aRule"
-            { set +x; } 2>/dev/null
-          else
-            set -x
-            sudo firewall-cmd --add-rich-rule "$aRule" --timeout "$banTime"
-            { set +x; } 2>/dev/null
-          fi
+  for aPort in $banPortsArray; do
+    for aProtocol in $banProtocolsArray; do
+      aRule="rule family=\"$aFamily\" source address=\"$ipAddress\" forward-port port=\"$aPort\" protocol=\"$aProtocol\" to-port=\"$prodBlackholePort\" to-addr=\"$prodBlackholeIPAddress\""
+      if isTrue $doBan; then
+        if [[ -z "$banTime" ]]; then
+          set -x
+          sudo firewall-cmd --add-rich-rule "$aRule"
+          { set +x; } 2>/dev/null
         else
           set -x
-          sudo firewall-cmd --remove-rich-rule "$aRule"
+          sudo firewall-cmd --add-rich-rule "$aRule" --timeout "$banTime"
           { set +x; } 2>/dev/null
         fi
-      done
+      else
+        set -x
+        sudo firewall-cmd --remove-rich-rule "$aRule"
+        { set +x; } 2>/dev/null
+      fi
     done
   done
 }
