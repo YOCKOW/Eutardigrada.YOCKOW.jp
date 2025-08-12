@@ -8,3 +8,43 @@ enabled  = true
 port     = http,https
 logpath  = %%apache_error_logs%%
 action   = eutardigrada-action
+
+[apache-badbots]
+enabled  = true
+logpath  = %%apache_access_logs%%
+action   = eutardigrada-action
+
+[apache-botsearch]
+enabled  = true
+logpath  = %%apache_error_logs%%
+action   = eutardigrada-action
+
+[apache-fakegooglebot]
+enabled  = true
+logpath  = %%apache_access_logs%%
+action   = eutardigrada-action
+
+[apache-modsecurity]
+enabled  = true
+logpath  = %%apache_error_logs%%
+action   = eutardigrada-action
+
+[apache-nohome]
+enabled  = true
+logpath  = %%apache_error_logs%%
+action   = eutardigrada-action
+
+[apache-noscript]
+enabled  = true
+logpath  = %%apache_error_logs%%
+action   = eutardigrada-action
+
+[apache-overflows]
+enabled  = true
+logpath  = %%apache_error_logs%%
+action   = eutardigrada-action
+
+[apache-shellshock]
+enabled  = true
+logpath  = %%apache_error_logs%%
+action   = eutardigrada-action

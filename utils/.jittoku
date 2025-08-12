@@ -471,7 +471,7 @@ function __modify-content() {
 
   cat "$filePath" | \
     sed -E "s|%%apache_all_logs%%|${webLogsDir}/*.txt|" | \
-    sed -E "s|%%apache_common_logs%%|${webLogsDir}/*.common.*.txt|" | \
+    sed -E "s|%%apache_access_logs%%|${webLogsDir}/*.common.*.txt|" | \
     sed -E "s|%%apache_error_logs%%|${webLogsDir}/*.error.*.txt|" | \
     sed -E "s|%%repo_root_dir%%|${repoRootDir}|" | \
     sed -E "s|%%utils_dir%%|${utilsDir}|" | \
