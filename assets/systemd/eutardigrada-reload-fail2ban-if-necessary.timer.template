@@ -1,0 +1,15 @@
+# eutardigrada-reload-fail2ban-if-necessary.timer
+#   © 2025 YOCKOW.
+#     Licensed under MIT License.
+#     See "LICENSE.txt" for more information.
+
+[Unit]
+Description=Timer for "Reload Fail2ban If Necessary"
+
+[Timer]
+Unit=eutardigrada-reload-fail2ban-if-necessary.service
+OnCalendar=*-*-* *:*:10
+Persistent=true
+
+[Install]
+WantedBy=timers.target
