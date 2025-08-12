@@ -1,0 +1,10 @@
+# eutardigrada-apache.local
+#   © 2025 YOCKOW.
+#     Licensed under MIT License.
+#     See "LICENSE.txt" for more information.
+
+[apache-auth]
+enabled  = true
+port     = http,https
+logpath  = %%apache_error_logs%%
+action   = eutardigrada-action
