@@ -15,7 +15,7 @@ actionstop =
 
 actioncheck =
 
-actionban = %%utils_dir%%/ban-ip <ip> --timeout 72h
+actionban = %%utils_dir%%/ban-ip <ip>
 
 actionunban = %%utils_dir%%/unban-ip <ip>
 
