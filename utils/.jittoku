@@ -20,9 +20,12 @@ declare -r -a commandArguments=($@)
 declare -r utilsDir=$(cd $(dirname "$0") && pwd -P)
 declare -r repoRootDir=$(dirname "$utilsDir")
 declare -r assetsDir="${repoRootDir}/assets"
-declare -r systemdDir="${assetsDir}/systemd"
 declare -r certbotDir="${assetsDir}/letsencrypt"
+declare -r fail2banDir="${assetsDir}/fail2ban"
+declare -r systemdDir="${assetsDir}/systemd"
 declare -r webRootDir="${repoRootDir}/Web"
+declare -r webLogsDir="${webRootDir}/Logs"
+declare -r webLogsCountFile="${webLogsDir}/.count"
 
 ## Docker Compose
 declare -r composeBaseYamlFile="${repoRootDir}/docker-compose.base.yml"
@@ -200,13 +203,30 @@ function install-certbot-config-files() {
   }; done
 }
 
+function install-fail2ban-config-files() {
+  if isDarwin; then
+    printWarning "'$0' runs with debug mode on Darwin."
+  fi
+
+  local fail2banConfFilePath
+  for fail2banConfFilePath in "${fail2banDir}/"**/*.{local,conf}.template(N); do function () {
+    local -r filename=$(basename "$fail2banConfFilePath")
+    local -r relativePath=${fail2banConfFilePath##${fail2banDir}/}
+    local -r targetPath="/etc/fail2ban/${relativePath%.template}"
+
+    __install-file \
+      --pre "# Generated from $fail2banConfFilePath" \
+      "$fail2banConfFilePath" "$targetPath"
+  }; done
+}
+
 function install-systemd-files() {
   if isDarwin; then
     printWarning "'$0' runs with debug mode on Darwin."
   fi
   
   local systemdFilePath
-  for systemdFilePath in "${systemdDir}/"*.{timer,service}.template(N); do {
+  for systemdFilePath in "${systemdDir}/"*.{timer,service}.template(N); do function () {
     local -r filename=$(basename "$systemdFilePath")
     local -r targetPath="/etc/systemd/system/${filename%.template}"
 
@@ -218,6 +238,28 @@ function install-systemd-files() {
 
 function pull-production-image() {
   __docker-compose --file "$composeBaseYamlFile" --file "$composeProdYamlFile" pull
+}
+
+function reload-fail2ban-if-necessary() {
+  if [[ ! -f "$webLogsCountFile" ]]; then
+    echo 0 >"$webLogsCountFile"
+  fi
+
+  local -r lastCountOfLogFiles=$(( $(cat "$webLogsCountFile") + 0 ))
+  local -r currentCountOfLogFiles=$(( $(ls -U1 "$webLogsDir" | grep -E '\.txt$' | wc -l) + 0 ))
+
+  if [[ $lastCountOfLogFiles -eq $currentCountOfLogFiles ]]; then
+    printInfo "Up-to-date."
+  else
+    if ! isDarwin; then
+      set -x
+      sudo systemctl restart fail2ban
+      { set +x; } 2>/dev/null
+    fi
+    set -x
+    echo "$currentCountOfLogFiles" >"$webLogsCountFile"
+    { set +x; } 2>/dev/null
+  fi
 }
 
 function restart-development-server() {
@@ -428,6 +470,9 @@ function __modify-content() {
   fi
 
   cat "$filePath" | \
+    sed -E "s|%%apache_all_logs%%|${webLogsDir}/*.txt|" | \
+    sed -E "s|%%apache_access_logs%%|${webLogsDir}/*.common.*.txt|" | \
+    sed -E "s|%%apache_error_logs%%|${webLogsDir}/*.error.*.txt|" | \
     sed -E "s|%%repo_root_dir%%|${repoRootDir}|" | \
     sed -E "s|%%utils_dir%%|${utilsDir}|" | \
     sed -E "s|%%web_root_dir%%|${webRootDir}|"
@@ -443,8 +488,10 @@ docker-compose-config | \
 generate-development-certificates | \
 get-gid | \
 install-certbot-config-files | \
+install-fail2ban-config-files | \
 install-systemd-files | \
 pull-production-image | \
+reload-fail2ban-if-necessary | \
 restart-development-server | \
 restart-production-server | \
 start-development-server |\

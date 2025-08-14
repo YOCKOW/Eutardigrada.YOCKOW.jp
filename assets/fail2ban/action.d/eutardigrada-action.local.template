@@ -1,0 +1,24 @@
+# eutardigrada-actiion.local
+#   © 2025 YOCKOW.
+#     Licensed under MIT License.
+#     See "LICENSE.txt" for more information.
+
+[INCLUDES]
+
+before =
+
+[Definition]
+
+actionstart =
+
+actionstop =
+
+actioncheck =
+
+actionban = %%utils_dir%%/ban-ip <ip>
+
+actionunban = %%utils_dir%%/unban-ip <ip>
+
+[Init]
+
+name = eutardigrada-action
