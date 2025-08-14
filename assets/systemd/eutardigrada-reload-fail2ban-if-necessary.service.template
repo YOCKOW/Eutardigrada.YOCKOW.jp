@@ -1,0 +1,14 @@
+# eutardigrada-reload-fail2ban-if-necessary.service
+#   © 2025 YOCKOW.
+#     Licensed under MIT License.
+#     See "LICENSE.txt" for more information.
+
+[Unit]
+Description=Reload Fail2ban If Necessary
+
+[Service]
+Type=simple
+ExecStart=%%utils_dir%%/reload-fail2ban-if-necessary
+
+[Install]
+WantedBy=default.target
