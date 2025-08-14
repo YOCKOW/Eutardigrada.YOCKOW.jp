@@ -1,0 +1,8 @@
+# eutardigrada-apache-invalid-uri-path.local
+#   © 2025 YOCKOW.
+#     Licensed under MIT License.
+#     See "LICENSE.txt" for more information.
+
+[Definition]
+# Example: [Thu Aug 14 03:11:14.020024 2025] [core:error] [pid 27:tid 142] [client x.x.x.x:45555] AH10244: invalid URI path (/cgi-bin/.%2e/.%2e/.%2e/.%2e/.%2e/.%2e/.%2e/.%2e/.%2e/.%2e/bin/sh)
+failregex = \[(?:client|remote) <HOST>(:\d+)?\] AH10244: invalid URI path
