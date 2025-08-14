@@ -58,3 +58,13 @@ maxretry = 10
 findtime = 5m
 bantime  = 72h
 action   = eutardigrada-action
+
+[eutardigrada-apache-invalid-uri-path]
+filter   = eutardigrada-apache-invalid-uri-path
+enabled  = true
+port     = http,https
+logpath  = %%apache_error_logs%%
+maxretry = 2
+findtime = 5m
+bantime  = 72h
+action   = eutardigrada-action
