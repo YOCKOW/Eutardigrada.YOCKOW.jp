@@ -48,3 +48,13 @@ action   = eutardigrada-action
 enabled  = true
 logpath  = %%apache_error_logs%%
 action   = eutardigrada-action
+
+[eutardigrada-apache-client-error]
+filter   = eutardigrada-apache-client-error
+enabled  = true
+port     = http,https
+logpath  = %%apache_access_logs%%
+maxretry = 10
+findtime = 5m
+bantime  = 72h
+action   = eutardigrada-action
