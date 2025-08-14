@@ -26,6 +26,7 @@ declare -r systemdDir="${assetsDir}/systemd"
 declare -r webRootDir="${repoRootDir}/Web"
 declare -r webLogsDir="${webRootDir}/Logs"
 declare -r webLogsCountFile="${webLogsDir}/.count"
+declare -r webLogsArchivedDir="${webLogsDir}/archived"
 
 ## Docker Compose
 declare -r composeBaseYamlFile="${repoRootDir}/docker-compose.base.yml"
@@ -107,6 +108,98 @@ function isTrue() {
 
 # Commands
 ################################################################################
+
+function archive-old-logs() {
+  zparseopts -D -E -M -A parsedArguments -- v -verbose=v
+
+  local verbosely="false"
+  if [[ -n "${parsedArguments[(i)-v]}" ]]; then
+    verbosely="true"
+    printInfo "Verbose mode: on"
+  fi
+
+  local -r yearNow=$(( $(date '+%Y') + 0 ))
+  local -r monthNow=$(( $(date '+%m') + 0 ))
+
+  local -r -a allFiles=("$webLogsDir"/*(N))
+
+  local -a candidates=()
+  local aFile
+
+  for aFile in $allFiles; do
+    if [[ "${(L)aFile}" =~ '[0-9]+\.txt$' ]]; then
+      candidates=($candidates $aFile)
+    fi
+  done
+
+  local -A targetsMap=()
+  function __insertTargetsMap() {
+    local -r targetKey="${1:-}"
+    local -r targetFilename="${2:-}"
+
+    [[ -n "$targetKey" ]] && [[ -n "$targetFilename" ]] || assertionFailed "Missing target?!" ${(%):-%I}
+
+    if [[ -n "${targetsMap[(i)$targetKey]}" ]]; then
+      targetsMap[$targetKey]="$targetsMap[$targetKey],$targetFilename"
+    else
+      targetsMap[$targetKey]="$targetFilename"
+    fi
+    if isTrue $verbosely; then
+      printInfo "\"$targetFilename\" is added to group '$targetKey'"
+    fi
+  }
+
+  for aFile in $candidates; do
+    local filename=$(basename $aFile)
+    if [[ "$filename" =~ '^(.+)\.([0-9]+)\.([A-Za-z]+)$' ]]; then
+      local logType=$match[1]
+      local logDateString=$match[2]
+      local logExt=$match[3]
+
+      if [[ $logDateString =~ '^[0-9]{4}$' ]]; then
+        if [[ $(( $logDateString + 0 )) -lt $yearNow ]]; then
+          __insertTargetsMap "${logType}.${$logDateString}.${logExt}" "$filename"
+        fi
+      elif [[ $logDateString =~ '^([0-9]{4})([0-9]{2})' ]]; then
+        local logYearString=$match[1]
+        local logYear=$(( $logYearString + 0 ))
+        local logMonthString=$match[2]
+        local logMonth=$(( $logMonthString + 0 ))
+        if [[ $logYear -lt $yearNow ]] || { [[ $logYear -eq $yearNow ]] && [[ $logMonth -lt $monthNow ]] }; then
+          __insertTargetsMap "${logType}.${logYearString}${logMonthString}.${logExt}" "$filename"
+        fi
+      else
+        assertionFailed "Unexpected file at ${aFile}" ${(%):-%I}
+      fi
+    fi
+  done
+
+  
+  if isTrue $verbosely; then
+    printInfo "Target files are grouped as below:"
+
+    local targetKey targetFilenamesString
+    for targetKey targetFilenamesString in ${(kv)targetsMap}; do
+      printInfo "$(printf '- \033[1m\033[4m%s\033[m: %s\n' "$targetKey" "$targetFilenamesString")"
+    done
+  fi
+  
+
+  if isTrue $verbosely; then
+    printInfo "Now archiving..."
+  fi
+  mkdir -p "$webLogsArchivedDir"
+  cd "$webLogsDir"
+  for targetKey in ${(k)targetsMap}; do
+    local -a targetFilenames=(${(s:,:)targetsMap[$targetKey]})
+    set -x
+    zip -v "$webLogsArchivedDir/${targetKey}.zip" $targetFilenames
+    sudo rm $targetFilenames
+    { set +x; } 2>/dev/null
+  done
+
+  reload-fail2ban-if-necessary
+}
 
 function ban-ip() {
   __ban-or-unban-ip ban $@
@@ -483,6 +576,7 @@ function __modify-content() {
 ################################################################################
 
 case "$commandName" in
+archive-old-logs | \
 ban-ip | \
 docker-compose-config | \
 generate-development-certificates | \
