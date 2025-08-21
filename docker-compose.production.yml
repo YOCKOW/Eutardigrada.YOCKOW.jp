@@ -1,6 +1,7 @@
 # This compose file overrides 'docker-compose.base.yml'.
 networks:
   eutardigrada-network:
+    name: eutardigrada-network
     ipam:
       config:
         - subnet: "${PROD_NETWORK_IP_RANGE}"
