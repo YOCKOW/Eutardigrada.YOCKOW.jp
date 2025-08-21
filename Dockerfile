@@ -10,7 +10,7 @@
 
 # Configurable arguments
 ARG SWIFT_COMPILER_IMAGE="swift:6.1.2-noble"
-ARG SWIFT_DE_CGI_IMAGE="ghcr.io/yockow/swift-de-cgi:Swift_6.1.2-noble-release-20250701-074931"
+ARG SWIFT_DE_CGI_IMAGE="ghcr.io/yockow/swift-de-cgi:Swift_6.1.2-noble-release-20250819-080511"
 ARG CGI_DERIVATIVES_DIR="/home/swifche/Web/CGI"
 
 ################################################################################
