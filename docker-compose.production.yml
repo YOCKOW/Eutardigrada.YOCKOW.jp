@@ -26,4 +26,4 @@ services:
       - "${PROD_HTTP_SERVER_LOOPBACK_ADDRESS}:${PROD_HTTP_PORT}:80"
       - "${PROD_HTTP_SERVER_LOOPBACK_ADDRESS}:${PROD_HTTPS_PORT}:443"
     command: >-
-      httpd -f /home/swifche/Web/Config/httpd.conf
+      httpd -f /home/swifche/Web/static/Config/httpd.conf

@@ -11,12 +11,14 @@
 # Configurable arguments
 ARG SWIFT_COMPILER_IMAGE="swift:6.1.2-noble"
 ARG SWIFT_DE_CGI_IMAGE="ghcr.io/yockow/swift-de-cgi:Swift_6.1.2-noble-release-20250819-080511"
-ARG CGI_DERIVATIVES_DIR="/home/swifche/Web/CGI"
+ARG WEB_ROOT="/home/swifche/Web"
+ARG CGI_DERIVATIVES_DIR_RELATIVE_PATH="static/CGI"
+ARG CGI_DERIVATIVES_DIR="${WEB_ROOT}/${CGI_DERIVATIVES_DIR_RELATIVE_PATH}"
 
 ################################################################################
 FROM ${SWIFT_COMPILER_IMAGE} AS swift-cgi-builder
 
-ARG CGI_DERIVATIVES_DIR="/home/swifche/Web/CGI"
+ARG CGI_DERIVATIVES_DIR
 
 RUN mkdir -p "${CGI_DERIVATIVES_DIR}"
 COPY ./CGISources /CGISources
@@ -32,11 +34,13 @@ RUN mkdir -p "${CGI_DERIVATIVES_DIR}/SwiftCGIPackage" \
     && swift build --configuration release \
     && cp -R "$(cd .build/release/ && pwd -P)" "${CGI_DERIVATIVES_DIR}/SwiftCGIPackage/"
 
-
 ################################################################################
 FROM ${SWIFT_DE_CGI_IMAGE}
 
+ARG WEB_ROOT
 ARG CGI_DERIVATIVES_DIR
+
+COPY "./Web/static" "${WEB_ROOT}/static"
 COPY --from=swift-cgi-builder "${CGI_DERIVATIVES_DIR}" "${CGI_DERIVATIVES_DIR}"
 
 STOPSIGNAL SIGWINCH
