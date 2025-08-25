@@ -24,7 +24,9 @@ declare -r certbotDir="${assetsDir}/letsencrypt"
 declare -r fail2banDir="${assetsDir}/fail2ban"
 declare -r systemdDir="${assetsDir}/systemd"
 declare -r webRootDir="${repoRootDir}/Web"
-declare -r webLogsDir="${webRootDir}/Logs"
+declare -r webSharedDir="${webRootDir}/shared"
+declare -r webStaticDir="${webRootDir}/static"
+declare -r webLogsDir="${webSharedDir}/Logs"
 declare -r webLogsCountFile="${webLogsDir}/.count"
 declare -r webLogsArchivedDir="${webLogsDir}/archived"
 
@@ -382,6 +384,7 @@ function restart-production-server() {
 }
 
 function start-development-server() {
+  __docker-compose --file "$composeBaseYamlFile" --file "$composeDevYamlFile" build
   __docker-compose --file "$composeBaseYamlFile" --file "$composeDevYamlFile" up --detach
 }
 
@@ -486,6 +489,10 @@ function __env() {
     DEV_CONTAINER_NAME="${devContainerName}"
     PROD_CONTAINER_NAME="${prodContainerName}"
     HOST_ROOT_DIR="${repoRootDir}"
+    HOST_WEB_ROOT_DIR="${webRootDir}"
+    HOST_WEB_SHARED_DIR="${webSharedDir}"
+    HOST_WEB_STATIC_DIR="${webStaticDir}"
+    HOST_WEB_LOGS_DIR="${webLogsDir}"
     WWW_GROUP_ID="${wwwGID}"
     DEV_HTTP_PORT="${TEST_HTTP_PORT:-60080}" 
     DEV_HTTPS_PORT="${TEST_HTTPS_PORT:-60443}"
@@ -568,7 +575,8 @@ function __modify-content() {
     sed -E "s|%%apache_error_logs%%|${webLogsDir}/*.error.*.txt|" | \
     sed -E "s|%%repo_root_dir%%|${repoRootDir}|" | \
     sed -E "s|%%utils_dir%%|${utilsDir}|" | \
-    sed -E "s|%%web_root_dir%%|${webRootDir}|"
+    sed -E "s|%%web_root_dir%%|${webRootDir}|" | \
+    sed -E "s|%%web_shared_dir%%|${webSharedDir}|"
 }
 
 

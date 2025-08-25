@@ -6,14 +6,5 @@ services:
       WWW_GROUP_ID: ${WWW_GROUP_ID}
     volumes:
       - type: bind
-        source: ${HOST_ROOT_DIR}/Web/Config
-        target: /home/swifche/Web/Config
-      - type: bind
-        source: ${HOST_ROOT_DIR}/Web/DocumentRoot
-        target: /home/swifche/Web/DocumentRoot
-      - type: bind
-        source: ${HOST_ROOT_DIR}/Web/Logs
-        target: /home/swifche/Web/Logs
-      - type: bind
-        source: ${HOST_ROOT_DIR}/Web/UnsecureDocumentRoot
-        target: /home/swifche/Web/UnsecureDocumentRoot
+        source: ${HOST_WEB_SHARED_DIR}
+        target: /home/swifche/Web/shared

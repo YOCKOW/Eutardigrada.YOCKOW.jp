@@ -35,9 +35,13 @@ jobs:
       - name: Start Development Server (Build Development Image)
         run: ./utils/start-development-server
       - name: Test HTTP
-        run: curl -v --retry 5 --retry-delay 2 --retry-all-errors --fail-with-body --resolve ${TEST_SERVER_DOMAIN}:${TEST_HTTP_PORT}:127.0.0.1 http://${TEST_SERVER_DOMAIN}:${TEST_HTTP_PORT}/
+        run: |
+          curl -v --retry 5 --retry-delay 2 --retry-all-errors --fail-with-body --resolve ${TEST_SERVER_DOMAIN}:${TEST_HTTP_PORT}:127.0.0.1 http://${TEST_SERVER_DOMAIN}:${TEST_HTTP_PORT}/
+          curl -v --fail-with-body --resolve ${TEST_SERVER_DOMAIN}:${TEST_HTTP_PORT}:127.0.0.1 http://${TEST_SERVER_DOMAIN}:${TEST_HTTP_PORT}/shared.txt
       - name: Test HTTPS
-        run: curl -v --fail-with-body --http2 --cacert "${TEST_CA_CERT}" --resolve ${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}:127.0.0.1 https://${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}
+        run: |
+          curl -v --fail-with-body --http2 --cacert "${TEST_CA_CERT}" --resolve ${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}:127.0.0.1 https://${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}
+          curl -v --fail-with-body --http2 --cacert "${TEST_CA_CERT}" --resolve ${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}:127.0.0.1 https://${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}/shared.txt
       - name: Test Single Swift File CGI
         run: curl --silent --fail-with-body --cacert "${TEST_CA_CERT}" --resolve ${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}:127.0.0.1 https://${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}/single-swift-file.cgi
       - name: Test Swift Package CGI

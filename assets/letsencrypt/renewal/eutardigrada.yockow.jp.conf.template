@@ -8,7 +8,7 @@ fullchain = /etc/letsencrypt/live/eutardigrada.yockow.jp/fullchain.pem
 
 [renewalparams]
 authenticator = webroot
-webroot_path = %%web_root_dir%%/UnsecureDocumentRoot
+webroot_path = %%web_shared_dir%%/UnsecureDocumentRoot
 post_hook = systemctl restart eutardigrada-http-server
 server = https://acme-v02.api.letsencrypt.org/directory
 key_type = ecdsa
