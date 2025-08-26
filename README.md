@@ -60,7 +60,7 @@ Now, let's run the container image like:
 [Docker compose](https://docs.docker.com/compose/) is, of course, available to run the container image.
 This container also contains `docker-compose.*.yml` files. Please refer to them.
 
-You can also see a sample [`httpd.conf`](./Web/Config/httpd.conf) in this repository.
+You can also see a sample [`httpd.conf`](./Web/static/Config/httpd.conf) in this repository.
 
 
 # License
