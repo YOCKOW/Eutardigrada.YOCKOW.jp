@@ -4,7 +4,7 @@
 #     See "LICENSE.txt" for more information.
 
 [Definition]
-acceptable_paths = /(?:favicon\.ico|robots\.txt)
+acceptable_paths = /(?:apple-touch-icon(-precomposed)?\.png|favicon\.ico|robots\.txt)
 
 # Example: x.x.x.x - - [14/Aug/2025:10:03:14 +0900] "GET /path/to/file HTTP/1.1" 403 199
 failregex   = ^<HOST> .+ 4\d\d \d+$
