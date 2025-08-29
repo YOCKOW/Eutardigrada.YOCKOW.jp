@@ -30,6 +30,9 @@ declare -r webLogsDir="${webSharedDir}/Logs"
 declare -r webLogsCountFile="${webLogsDir}/.count"
 declare -r webLogsArchivedDir="${webLogsDir}/archived"
 
+declare -r swiftVersionFile="${repoRootDir}/.swift-version"
+declare -r swiftBuildOSFile="${repoRootDir}/.swift-build-os"
+
 ## Docker Compose
 declare -r composeBaseYamlFile="${repoRootDir}/docker-compose.base.yml"
 declare -r composeDevYamlFile="${repoRootDir}/docker-compose.development.yml"
@@ -205,6 +208,10 @@ function archive-old-logs() {
 
 function ban-ip() {
   __ban-or-unban-ip ban $@
+}
+
+function build-development-server() {
+  __docker-compose --file "$composeBaseYamlFile" --file "$composeDevYamlFile" build
 }
 
 function docker-compose-config() {
@@ -384,7 +391,7 @@ function restart-production-server() {
 }
 
 function start-development-server() {
-  __docker-compose --file "$composeBaseYamlFile" --file "$composeDevYamlFile" build
+  build-development-server
   __docker-compose --file "$composeBaseYamlFile" --file "$composeDevYamlFile" up --detach
 }
 
@@ -486,6 +493,8 @@ function __env() {
   fi
 
   local -a envStringArray=(
+    SWIFT_VERSION="$(cat "$swiftVersionFile")"
+    OS_NICKNAME="$(cat "$swiftBuildOSFile")"
     DEV_CONTAINER_NAME="${devContainerName}"
     PROD_CONTAINER_NAME="${prodContainerName}"
     HOST_ROOT_DIR="${repoRootDir}"
@@ -586,6 +595,7 @@ function __modify-content() {
 case "$commandName" in
 archive-old-logs | \
 ban-ip | \
+build-development-server | \
 docker-compose-config | \
 generate-development-certificates | \
 get-gid | \
