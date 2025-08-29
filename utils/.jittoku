@@ -23,6 +23,8 @@ declare -r assetsDir="${repoRootDir}/assets"
 declare -r certbotDir="${assetsDir}/letsencrypt"
 declare -r fail2banDir="${assetsDir}/fail2ban"
 declare -r systemdDir="${assetsDir}/systemd"
+declare -r swiftScratchDir="${repoRootDir}/.swift-scratch"
+declare -r cgiSourcesDir="${repoRootDir}/CGISources"
 declare -r webRootDir="${repoRootDir}/Web"
 declare -r webSharedDir="${webRootDir}/shared"
 declare -r webStaticDir="${webRootDir}/static"
@@ -211,6 +213,9 @@ function ban-ip() {
 }
 
 function build-development-server() {
+  swift-pre-build --configuration debug
+  swift-pre-build --configuration debug --test
+  swift-pre-build --configuration release
   __docker-compose --file "$composeBaseYamlFile" --file "$composeDevYamlFile" build
 }
 
@@ -412,6 +417,51 @@ function stop-production-server() {
   __docker-compose --file "$composeBaseYamlFile" --file "$composeProdYamlFile" down
 }
 
+function swift-pre-build() {
+  local -A parsedArguments
+  zparseopts -D -E -M -A parsedArguments -- \
+    c: -configuration:=c \
+    t -test=t
+
+  local swConfig="debug"
+  if [[ -n "${parsedArguments[(i)-c]}" ]]; then
+    swConfig="${parsedArguments[-c]##=}"
+  fi
+
+  local doTest="false"
+  if [[ -n "${parsedArguments[(i)-t]}" ]]; then
+    doTest="true"
+  fi
+
+  local -r swiftBuildBaseImage="swift:$(cat .swift-version)-$(cat .swift-build-os)"
+
+  if isTrue $doTest; then
+    set -x
+    sudo docker run --rm \
+      -v "${swiftScratchDir}:/swift-scratch" \
+      -v "${cgiSourcesDir}:/CGISources:ro" \
+      "$swiftBuildBaseImage" \
+      swift test --configuration "$swConfig" \
+        --package-path "/CGISources/SwiftCGIPackage" \
+        --scratch-path "/swift-scratch"
+    { set +x; } 2>/dev/null
+  else
+    set -x
+    sudo docker run --rm \
+      -v "${swiftScratchDir}:/swift-scratch" \
+      -v "${cgiSourcesDir}:/CGISources:ro" \
+      "$swiftBuildBaseImage" \
+      swift build --configuration "$swConfig" \
+        --package-path "/CGISources/SwiftCGIPackage" \
+        --scratch-path "/swift-scratch"
+    { set +x; } 2>/dev/null
+  fi
+
+  if [[ -v GITHUB_ACTIONS ]]; then
+    __fix-swift-scratch-dir-permissions
+  fi
+}
+
 function unban-ip() {
   __ban-or-unban-ip unban $@
 }
@@ -527,6 +577,24 @@ function __docker-compose() {
   __env sudo docker compose $@
 }
 
+function __fix-swift-scratch-dir-permissions() {
+  local -r currentUserName="$(whoami)"
+
+  set -x
+  sudo chown -R "$currentUserName" "$swiftScratchDir"
+  { set +x; } 2>/dev/null
+
+  if get-gid swifche >/dev/null; then
+    set -x
+    sudo chgrp -R swifche "$swiftScratchDir"
+    { set +x; } 2>/dev/null
+  fi
+
+  set -x
+  sudo chmod -R ug=rwX,o= "$swiftScratchDir"
+  { set +x; } 2>/dev/null
+}
+
 function __get-www-gid() {
   get-gid swifche
 }
@@ -610,6 +678,7 @@ start-development-server |\
 start-production-server |\
 stop-development-server |\
 stop-production-server | \
+swift-pre-build | \
 unban-ip )
   $commandName $commandArguments
 ;;

@@ -42,10 +42,17 @@ jobs:
             echo "tag_name=" >>"$GITHUB_OUTPUT"
           ;;
           esac
+      - name: Calculate Hash
+        id: calculate-hash
+        env:
+          SWIFT_FILES_HASH: ${{ hashFiles('CGISources/**/*.swift') }}
+        run: |
+          echo "swift-files-hash=${SWIFT_FILES_HASH}" >>"$GITHUB_OUTPUT"
     outputs:
       swift-version: ${{ steps.get-build-args.outputs.swift-version }}
       os-nickname: ${{ steps.get-build-args.outputs.os-nickname }}
       tag-name: ${{ steps.define-tag-name.outputs.tag_name }}
+      swift-files-hash: ${{ steps.calculate-hash.outputs.swift-files-hash }}
   Deploy:
     needs:
       - Define-Constants
@@ -59,6 +66,14 @@ jobs:
       username: ${{ github.actor }}
       image-basename: eutardigrada.yockow.jp
       tags: ${{ needs.Define-Constants.outputs.tag-name }}
+      cache-file-path: .swift-scratch
+      cache-file-key-suffix: ${{ needs.Define-Constants.outputs.os-nickname }}-${{ needs.Define-Constants.outputs.swift-version }}-${{ needs.Define-Constants.outputs.swift-files-hash }}
+      set-up-command: >-
+        sudo apt update &&
+        sudo apt install zsh &&
+        ./utils/swift-pre-build --configuration debug &&
+        ./utils/swift-pre-build --configuration debug --test &&
+        ./utils/swift-pre-build --configuration release
       push: true
     secrets:
       password: ${{ secrets.GITHUB_TOKEN }}
