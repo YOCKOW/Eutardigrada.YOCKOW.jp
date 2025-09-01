@@ -2,7 +2,12 @@
 services:
   eutardigrada-server:
     container_name: ${DEV_CONTAINER_NAME}
-    build: .
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      args:
+        SWIFT_VERSION: ${SWIFT_VERSION}
+        OS_NICKNAME: ${OS_NICKNAME}
     environment:
       DEFAULT_SERVER_DOMAIN: Eutardigrada.YOCKOW.test
       HOST_HTTP_PORT: "${DEV_HTTP_PORT}"

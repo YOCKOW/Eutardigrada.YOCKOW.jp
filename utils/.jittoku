@@ -23,12 +23,17 @@ declare -r assetsDir="${repoRootDir}/assets"
 declare -r certbotDir="${assetsDir}/letsencrypt"
 declare -r fail2banDir="${assetsDir}/fail2ban"
 declare -r systemdDir="${assetsDir}/systemd"
+declare -r swiftScratchDir="${repoRootDir}/.swift-scratch"
+declare -r cgiSourcesDir="${repoRootDir}/CGISources"
 declare -r webRootDir="${repoRootDir}/Web"
 declare -r webSharedDir="${webRootDir}/shared"
 declare -r webStaticDir="${webRootDir}/static"
 declare -r webLogsDir="${webSharedDir}/Logs"
 declare -r webLogsCountFile="${webLogsDir}/.count"
 declare -r webLogsArchivedDir="${webLogsDir}/archived"
+
+declare -r swiftVersionFile="${repoRootDir}/.swift-version"
+declare -r swiftBuildOSFile="${repoRootDir}/.swift-build-os"
 
 ## Docker Compose
 declare -r composeBaseYamlFile="${repoRootDir}/docker-compose.base.yml"
@@ -205,6 +210,13 @@ function archive-old-logs() {
 
 function ban-ip() {
   __ban-or-unban-ip ban $@
+}
+
+function build-development-server() {
+  swift-pre-build --configuration debug
+  swift-pre-build --configuration debug --test
+  swift-pre-build --configuration release
+  __docker-compose --file "$composeBaseYamlFile" --file "$composeDevYamlFile" build
 }
 
 function docker-compose-config() {
@@ -384,7 +396,7 @@ function restart-production-server() {
 }
 
 function start-development-server() {
-  __docker-compose --file "$composeBaseYamlFile" --file "$composeDevYamlFile" build
+  build-development-server
   __docker-compose --file "$composeBaseYamlFile" --file "$composeDevYamlFile" up --detach
 }
 
@@ -403,6 +415,51 @@ function stop-development-server() {
 
 function stop-production-server() {
   __docker-compose --file "$composeBaseYamlFile" --file "$composeProdYamlFile" down
+}
+
+function swift-pre-build() {
+  local -A parsedArguments
+  zparseopts -D -E -M -A parsedArguments -- \
+    c: -configuration:=c \
+    t -test=t
+
+  local swConfig="debug"
+  if [[ -n "${parsedArguments[(i)-c]}" ]]; then
+    swConfig="${parsedArguments[-c]##=}"
+  fi
+
+  local doTest="false"
+  if [[ -n "${parsedArguments[(i)-t]}" ]]; then
+    doTest="true"
+  fi
+
+  local -r swiftBuildBaseImage="swift:$(cat .swift-version)-$(cat .swift-build-os)"
+
+  if isTrue $doTest; then
+    set -x
+    sudo docker run --rm \
+      -v "${swiftScratchDir}:/swift-scratch" \
+      -v "${cgiSourcesDir}:/CGISources:ro" \
+      "$swiftBuildBaseImage" \
+      swift test --configuration "$swConfig" \
+        --package-path "/CGISources/SwiftCGIPackage" \
+        --scratch-path "/swift-scratch"
+    { set +x; } 2>/dev/null
+  else
+    set -x
+    sudo docker run --rm \
+      -v "${swiftScratchDir}:/swift-scratch" \
+      -v "${cgiSourcesDir}:/CGISources:ro" \
+      "$swiftBuildBaseImage" \
+      swift build --configuration "$swConfig" \
+        --package-path "/CGISources/SwiftCGIPackage" \
+        --scratch-path "/swift-scratch"
+    { set +x; } 2>/dev/null
+  fi
+
+  if [[ -v GITHUB_ACTIONS ]]; then
+    __fix-swift-scratch-dir-permissions
+  fi
 }
 
 function unban-ip() {
@@ -486,6 +543,8 @@ function __env() {
   fi
 
   local -a envStringArray=(
+    SWIFT_VERSION="$(cat "$swiftVersionFile")"
+    OS_NICKNAME="$(cat "$swiftBuildOSFile")"
     DEV_CONTAINER_NAME="${devContainerName}"
     PROD_CONTAINER_NAME="${prodContainerName}"
     HOST_ROOT_DIR="${repoRootDir}"
@@ -516,6 +575,24 @@ function __env() {
 
 function __docker-compose() {
   __env sudo docker compose $@
+}
+
+function __fix-swift-scratch-dir-permissions() {
+  local -r currentUserName="$(whoami)"
+
+  set -x
+  sudo chown -R "$currentUserName" "$swiftScratchDir"
+  { set +x; } 2>/dev/null
+
+  if get-gid swifche >/dev/null; then
+    set -x
+    sudo chgrp -R swifche "$swiftScratchDir"
+    { set +x; } 2>/dev/null
+  fi
+
+  set -x
+  sudo chmod -R ug=rwX,o= "$swiftScratchDir"
+  { set +x; } 2>/dev/null
 }
 
 function __get-www-gid() {
@@ -586,6 +663,7 @@ function __modify-content() {
 case "$commandName" in
 archive-old-logs | \
 ban-ip | \
+build-development-server | \
 docker-compose-config | \
 generate-development-certificates | \
 get-gid | \
@@ -600,6 +678,7 @@ start-development-server |\
 start-production-server |\
 stop-development-server |\
 stop-production-server | \
+swift-pre-build | \
 unban-ip )
   $commandName $commandArguments
 ;;
