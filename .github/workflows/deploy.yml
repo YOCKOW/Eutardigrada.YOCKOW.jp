@@ -1,8 +1,13 @@
 name: Deploy Eutardigrada.YOCKOW.jp
 on:
-  push:
+  workflow_run:
+    workflows:
+      - Test Eutardigrada.YOCKOW.jp
+    types:
+      - completed
     branches:
       - main
+  push:
     tags:
       - "release-*"
 permissions:
@@ -12,6 +17,13 @@ permissions:
   id-token: write
 jobs:
   Define-Constants:
+    if: >-
+      ${{
+        github.event_name == 'push' || (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success'
+        )
+      }}
     runs-on: ubuntu-latest
     steps:
       - name: Check out Repository
