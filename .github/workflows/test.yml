@@ -5,6 +5,8 @@ on:
       - "*"
     paths:
       - ".github/workflows/*.yml"
+      - ".swift-build-os"
+      - ".swift-version"
       - "CGISources/**"
       - "docker-compose.*.yml"
       - "**/Dockerfile"

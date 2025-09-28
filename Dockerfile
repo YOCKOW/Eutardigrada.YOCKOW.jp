@@ -9,7 +9,7 @@
 ################################################################################
 
 # Configurable arguments
-ARG SWIFT_VERSION="6.1.3"
+ARG SWIFT_VERSION="6.2.0"
 ARG OS_NICKNAME="noble"
 ARG SWIFT_COMPILER_IMAGE="swift:${SWIFT_VERSION}-${OS_NICKNAME}"
 ARG SWIFT_DE_CGI_IMAGE="ghcr.io/yockow/swift-de-cgi:Swift_${SWIFT_VERSION}-${OS_NICKNAME}-latest"
