@@ -25,8 +25,9 @@ ARG CGI_DERIVATIVES_DIR
 RUN mkdir -p "${CGI_DERIVATIVES_DIR}"
 COPY ./CGISources /CGISources
 
-# Compile the single Swift file
-RUN swiftc -O /CGISources/SingleSwiftFile/main.swift -o "${CGI_DERIVATIVES_DIR}/single-swift-file.cgi"
+# Compile the single Swift files
+RUN swiftc -O /CGISources/SingleSwiftFile/main.swift -o "${CGI_DERIVATIVES_DIR}/single-swift-file.cgi" \
+    && swiftc -O /CGISources/acknowledgements/main.swift -o "${CGI_DERIVATIVES_DIR}/acknowledgements"
 
 # Compile Swift Package
 COPY ./.swift-scratch /swift-scratch
