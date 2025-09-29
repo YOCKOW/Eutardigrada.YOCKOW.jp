@@ -61,5 +61,7 @@ jobs:
         run: curl --silent --fail-with-body --cacert "${TEST_CA_CERT}" --resolve ${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}:127.0.0.1 https://${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}/single-swift-file.cgi
       - name: Test Swift Package CGI
         run: curl --silent --fail-with-body --cacert "${TEST_CA_CERT}" --resolve ${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}:127.0.0.1 https://${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}/swift-package.cgi
+      - name: Test "Acknowledgements"
+        run: curl --silent --fail-with-body --cacert "${TEST_CA_CERT}" --resolve ${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}:127.0.0.1 https://${TEST_SERVER_DOMAIN}:${TEST_HTTPS_PORT}/acknowledgements
       - name: Stop Development Server
         run: ./utils/stop-development-server
