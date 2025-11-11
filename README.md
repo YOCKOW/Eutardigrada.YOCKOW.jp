@@ -44,12 +44,12 @@ For ease of explanation, this repository contains only one [`Dockerfile`](./Dock
 
 ### 1. Compile Swift sources
 
-You can compile Swift sources using a container image such as `swift:6.2.0-noble`.
+You can compile Swift sources using a container image such as `swift:6.2.1-noble`.
 In this repository, the compiled (executable) files are located at '/home/swifche/Web/CGI' directory where `swifche` is a default user in `DockerSwiftApacheCombination` image.
 
 ### 2. Copy executable files
 
-Then, copy the executable files into a `DockerSwiftApacheCombination` image which is, for example, tagged as `ghcr.io/yockow/swift-de-cgi:Swift_6.2.0-noble-latest`.
+Then, copy the executable files into a `DockerSwiftApacheCombination` image which is, for example, tagged as `ghcr.io/yockow/swift-de-cgi:Swift_6.2.1-noble-latest`.
 
 ### 3. Run container image with your `httpd.conf`
 
