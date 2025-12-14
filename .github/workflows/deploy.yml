@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Get Build Args
         id: get-build-args
         run: |
@@ -81,8 +81,8 @@ jobs:
       cache-file-path: .swift-scratch
       cache-file-key-suffix: ${{ needs.Define-Constants.outputs.os-nickname }}-${{ needs.Define-Constants.outputs.swift-version }}-${{ needs.Define-Constants.outputs.swift-files-hash }}
       set-up-command: >-
-        sudo apt update &&
-        sudo apt install zsh &&
+        sudo apt-get update &&
+        sudo apt-get install --no-install-recommends -y zsh &&
         ./utils/swift-pre-build --configuration debug &&
         ./utils/swift-pre-build --configuration debug --test &&
         ./utils/swift-pre-build --configuration release
