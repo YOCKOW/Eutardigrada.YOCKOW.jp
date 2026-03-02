@@ -2,14 +2,14 @@
 #
 # Dockerfile
 #
-# © 2025 YOCKOW.
+# © 2025-2026 YOCKOW.
 #     Licensed under MIT License.
 #     See "LICENSE.txt" for more information.
 #
 ################################################################################
 
 # Configurable arguments
-ARG SWIFT_VERSION="6.2.3"
+ARG SWIFT_VERSION="6.2.4"
 ARG OS_NICKNAME="noble"
 ARG SWIFT_COMPILER_IMAGE="swift:${SWIFT_VERSION}-${OS_NICKNAME}"
 ARG SWIFT_DE_CGI_IMAGE="ghcr.io/yockow/swift-de-cgi:Swift_${SWIFT_VERSION}-${OS_NICKNAME}-latest"
