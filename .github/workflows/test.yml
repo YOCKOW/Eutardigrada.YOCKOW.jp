@@ -20,14 +20,14 @@ jobs:
       TEST_CA_CERT: .certs/ca/dev-ca.crt
     steps:
       - name: Check out Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Get Build Conf
         id: get-build-conf
         run: |
           echo "swift-version=$(cat .swift-version)" >>"$GITHUB_OUTPUT"
           echo "os-nickname=$(cat .swift-build-os)" >>"$GITHUB_OUTPUT"
       - name: Cache .swift-scratch
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .swift-scratch
           key: ${{ steps.get-build-conf.outputs.os-nickname }}-${{ steps.get-build-conf.outputs.swift-version }}-${{ hashFiles('CGISources/**/*.swift') }}
@@ -40,7 +40,7 @@ jobs:
           sudo apt update
           sudo apt install zsh
       - name: Set up Docker Compose
-        uses: docker/setup-compose-action@v1
+        uses: docker/setup-compose-action@v2
       - name: Create 'swifche' group
         run: |
           sudo groupadd swifche
