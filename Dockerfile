@@ -9,8 +9,8 @@
 ################################################################################
 
 # Configurable arguments
-ARG SWIFT_VERSION="6.3.3"
-ARG OS_NICKNAME="noble"
+ARG SWIFT_VERSION="6.4.0"
+ARG OS_NICKNAME="resolute"
 ARG SWIFT_COMPILER_IMAGE="swift:${SWIFT_VERSION}-${OS_NICKNAME}"
 ARG SWIFT_DE_CGI_IMAGE="ghcr.io/yockow/swift-de-cgi:Swift_${SWIFT_VERSION}-${OS_NICKNAME}-latest"
 ARG WEB_ROOT="/home/swifche/Web"
@@ -32,9 +32,9 @@ RUN swiftc -O /CGISources/SingleSwiftFile/main.swift -o "${CGI_DERIVATIVES_DIR}/
 # Compile Swift Package
 COPY ./.swift-scratch /swift-scratch
 WORKDIR /CGISources/SwiftCGIPackage
-RUN mkdir -p "${CGI_DERIVATIVES_DIR}/SwiftCGIPackage" \
+RUN mkdir -p "${CGI_DERIVATIVES_DIR}/SwiftCGIPackage/release" \
     && swift build --configuration release --scratch-path /swift-scratch \
-    && cp -R "$(cd /swift-scratch/release/ && pwd -P)" "${CGI_DERIVATIVES_DIR}/SwiftCGIPackage/"
+    && cp -R "$(cd /swift-scratch/release/ && pwd -P)"/* "${CGI_DERIVATIVES_DIR}/SwiftCGIPackage/release"
 
 ################################################################################
 FROM ${SWIFT_DE_CGI_IMAGE}
