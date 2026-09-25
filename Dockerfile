@@ -32,9 +32,9 @@ RUN swiftc -O /CGISources/SingleSwiftFile/main.swift -o "${CGI_DERIVATIVES_DIR}/
 # Compile Swift Package
 COPY ./.swift-scratch /swift-scratch
 WORKDIR /CGISources/SwiftCGIPackage
-RUN mkdir -p "${CGI_DERIVATIVES_DIR}/SwiftCGIPackage" \
+RUN mkdir -p "${CGI_DERIVATIVES_DIR}/SwiftCGIPackage/release" \
     && swift build --configuration release --scratch-path /swift-scratch \
-    && cp -R "$(cd /swift-scratch/release/ && pwd -P)" "${CGI_DERIVATIVES_DIR}/SwiftCGIPackage/"
+    && cp -R "$(cd /swift-scratch/release/ && pwd -P)"/* "${CGI_DERIVATIVES_DIR}/SwiftCGIPackage/release"
 
 ################################################################################
 FROM ${SWIFT_DE_CGI_IMAGE}
