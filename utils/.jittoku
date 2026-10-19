@@ -387,18 +387,18 @@ function restart-development-server() {
 
 function restart-production-server() {
   local -A parsedArguments
-  zparseopts -D -E -M -A parsedArguments -- -pull
-  local shouldPull="false"
+  zparseopts -D -E -M -A parsedArguments -- -pull -prune
+
   if [[ -n "${parsedArguments[(i)--pull]}" ]]; then
-    shouldPull="true"
+    pull-production-image
   fi
 
   set +e
   stop-production-server
 
   set -e
-  if isTrue $shouldPull; then
-    start-production-server --pull
+  if [[ -n "${parsedArguments[(i)--prune]}" ]]; then
+    start-production-server --prune
   else
     start-production-server
   fi
@@ -466,11 +466,19 @@ function start-development-server() {
 
 function start-production-server() {
   local -A parsedArguments
-  zparseopts -D -E -M -A parsedArguments -- -pull
+  zparseopts -D -E -M -A parsedArguments -- -pull -prune
   if [[ -n "${parsedArguments[(i)--pull]}" ]]; then
     pull-production-image
   fi
+
   __docker-compose --file "$composeBaseYamlFile" --file "$composeProdYamlFile" up --detach
+
+  if [[ -n "${parsedArguments[(i)--prune]}" ]]; then
+    set -x
+    sudo docker images -a
+    sudo docker image prune --force
+    { set +x; } 2>/dev/null
+  fi
 }
 
 function stop-development-server() {
