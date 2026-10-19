@@ -9,7 +9,7 @@
 ################################################################################
 
 # Configurable arguments
-ARG SWIFT_VERSION="6.4.0"
+ARG SWIFT_VERSION="6.4.1"
 ARG OS_NICKNAME="resolute"
 ARG SWIFT_COMPILER_IMAGE="swift:${SWIFT_VERSION}-${OS_NICKNAME}"
 ARG SWIFT_DE_CGI_IMAGE="ghcr.io/yockow/swift-de-cgi:Swift_${SWIFT_VERSION}-${OS_NICKNAME}-latest"
@@ -21,6 +21,10 @@ ARG CGI_DERIVATIVES_DIR="${WEB_ROOT}/${CGI_DERIVATIVES_DIR_RELATIVE_PATH}"
 FROM ${SWIFT_COMPILER_IMAGE} AS swift-cgi-builder
 
 ARG CGI_DERIVATIVES_DIR
+
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends rsync
 
 RUN mkdir -p "${CGI_DERIVATIVES_DIR}"
 COPY ./CGISources /CGISources
@@ -34,7 +38,16 @@ COPY ./.swift-scratch /swift-scratch
 WORKDIR /CGISources/SwiftCGIPackage
 RUN mkdir -p "${CGI_DERIVATIVES_DIR}/SwiftCGIPackage/release" \
     && swift build --configuration release --scratch-path /swift-scratch \
-    && cp -R "$(cd /swift-scratch/release/ && pwd -P)"/* "${CGI_DERIVATIVES_DIR}/SwiftCGIPackage/release"
+    && rsync -a -v -h -u \
+        --exclude=".DS_Store" \
+        --exclude="ModuleCache" \
+        --exclude="*.autolink" \
+        --exclude="*.dSYM" \
+        --exclude="*.swiftdoc" \
+        --exclude="*.swiftmodule" \
+        --exclude="*.swiftsourceinfo" \
+        "$(cd /swift-scratch/release/ && pwd -P)/" \
+        "${CGI_DERIVATIVES_DIR}/SwiftCGIPackage/release"
 
 ################################################################################
 FROM ${SWIFT_DE_CGI_IMAGE}
