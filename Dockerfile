@@ -22,6 +22,10 @@ FROM ${SWIFT_COMPILER_IMAGE} AS swift-cgi-builder
 
 ARG CGI_DERIVATIVES_DIR
 
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends rsync
+
 RUN mkdir -p "${CGI_DERIVATIVES_DIR}"
 COPY ./CGISources /CGISources
 
@@ -34,7 +38,16 @@ COPY ./.swift-scratch /swift-scratch
 WORKDIR /CGISources/SwiftCGIPackage
 RUN mkdir -p "${CGI_DERIVATIVES_DIR}/SwiftCGIPackage/release" \
     && swift build --configuration release --scratch-path /swift-scratch \
-    && cp -R "$(cd /swift-scratch/release/ && pwd -P)"/* "${CGI_DERIVATIVES_DIR}/SwiftCGIPackage/release"
+    && rsync -a -v -h -u \
+        --exclude=".DS_Store" \
+        --exclude="ModuleCache" \
+        --exclude="*.autolink" \
+        --exclude="*.dSYM" \
+        --exclude="*.swiftdoc" \
+        --exclude="*.swiftmodule" \
+        --exclude="*.swiftsourceinfo" \
+        "$(cd /swift-scratch/release/ && pwd -P)/" \
+        "${CGI_DERIVATIVES_DIR}/SwiftCGIPackage/release"
 
 ################################################################################
 FROM ${SWIFT_DE_CGI_IMAGE}
