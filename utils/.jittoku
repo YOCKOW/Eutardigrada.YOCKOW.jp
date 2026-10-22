@@ -234,6 +234,23 @@ function docker-compose-config() {
   esac
 }
 
+function fail2ban-status-all() {
+  local -r jailListLine=$(sudo fail2ban-client status | grep 'Jail list:' | sed -E 's/^[^:]+:[[:space:]]+//')
+  local -r -a jailList=($(echo ${(s:,:)jailListLine} | xargs))
+  if [[ $#jailList -lt 1 ]]; then
+    echo "No jails found." >&2
+    return 0
+  fi
+
+  local aJail
+  for aJail in $jailList; do
+    sudo fail2ban-client status $aJail
+    if [[ "$aJail" != "${jailList[-1]}" ]]; then
+      echo --------------------
+    fi
+  done
+}
+
 function generate-development-certificates() {
   set -x
 
@@ -776,6 +793,7 @@ archive-old-logs | \
 ban-ip | \
 build-development-server | \
 docker-compose-config | \
+fail2ban-status-all | \
 generate-development-certificates | \
 get-gid | \
 install-certbot-config-files | \
