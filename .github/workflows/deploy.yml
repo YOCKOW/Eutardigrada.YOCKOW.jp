@@ -80,7 +80,7 @@ jobs:
       - Define-Constants
     uses: YOCKOW/DockerSwiftApacheCombination/.github/workflows/reusable_build-multiplatform-image.yml@main
     with:
-      if-absent: false
+      force-build: true
       build-args: |
         SWIFT_VERSION=${{ needs.Define-Constants.outputs.swift-version }}
         OS_NICKNAME=${{ needs.Define-Constants.outputs.os-nickname }}
