@@ -24,10 +24,12 @@ jobs:
   Define-Constants:
     if: >-
       ${{
-        github.event_name == 'push' || (
+        (
           github.event_name == 'workflow_run' &&
           github.event.workflow_run.conclusion == 'success'
-        )
+        ) ||
+        github.event_name == 'workflow_dispatch' ||
+        github.event_name == 'push'
       }}
     runs-on: ubuntu-latest
     steps:
@@ -41,27 +43,38 @@ jobs:
       - name: Define Tag Name
         id: define-tag-name
         env:
+          EVENT_NAME: ${{ github.event_name }}
           REF_TYPE: ${{ github.ref_type }}
           REF_NAME: ${{ github.ref_name }}
           INPUT_TAG_NAME: ${{ inputs.tag-name }}
         run: |
-          case "$REF_TYPE" in
-          branch)
+          case "$EVENT_NAME" in
+          workflow_run)
             if [[ "$REF_NAME" == "main" ]]; then
-              echo "tag_name=latest" >>"$GITHUB_OUTPUT"
+              echo "tag-name=latest" >>"$GITHUB_OUTPUT"
+            else
+              echo "::error::Unexpected branch?!"
+              exit 1
             fi
           ;;
-          tag)
-            if [[ "$REF_NAME" == release-* ]]; then
-              echo "tag_name=$REF_NAME" >>"$GITHUB_OUTPUT"
-            fi
-          ;;
-          *)
+          workflow_dispatch)
             if [[ -z "$INPUT_TAG_NAME" ]]; then
               echo "::error::Missing tag name?!"
               exit 1
             fi
-            echo "tag_name=$INPUT_TAG_NAME" >>"$GITHUB_OUTPUT"
+            echo "tag-name=$INPUT_TAG_NAME" >>"$GITHUB_OUTPUT"
+          ;;
+          push)
+            if [[ "$REF_TYPE" == "tag" ]]; then
+              echo "tag-name=$REF_NAME" >>"$GITHUB_OUTPUT"
+            else
+              echo "::error::Unexpected ref type?!"
+              exit 1
+            fi
+          ;;
+          *)
+            echo "::error::Unexpected event name?!"
+            exit 1
           ;;
           esac
       - name: Calculate Hash
@@ -73,7 +86,7 @@ jobs:
     outputs:
       swift-version: ${{ steps.get-build-args.outputs.swift-version }}
       os-nickname: ${{ steps.get-build-args.outputs.os-nickname }}
-      tag-name: ${{ steps.define-tag-name.outputs.tag_name }}
+      tag-name: ${{ steps.define-tag-name.outputs.tag-name }}
       swift-files-hash: ${{ steps.calculate-hash.outputs.swift-files-hash }}
   Deploy:
     needs:
